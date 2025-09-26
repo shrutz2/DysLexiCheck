@@ -1,0 +1,437 @@
+/* Global styles with glassmorphism background */
+body {
+  margin: 0;
+  font-family: 'Source Sans Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  
+  /* Glassmorphism gradient background */
+  background: linear-gradient(135deg, 
+    rgba(248, 245, 246, 0.011) 0%,   
+    rgba(249, 180, 180, 0.044) 25%,  
+    rgba(255, 220, 192, 0.059) 50%, 
+    rgba(250, 244, 245, 0) 75%,  
+    rgba(240, 128, 128, 0.1) 100%  
+  );
+  background-attachment: fixed;
+  min-height: 100vh;
+}
+
+/* Glassmorphism overlay effect */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: 
+    radial-gradient(circle at 20% 80%, rgba(243, 199, 205, 0.3) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(246, 202, 202, 0.3) 0%, transparent 50%),
+    radial-gradient(circle at 40% 40%, rgba(255, 192, 203, 0.2) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: -1;
+}
+
+
+/* Streamlit-like styling */
+.streamlit-style {
+  font-family: 'Source Sans Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  color: #262730;
+  line-height: 1.6;
+}
+
+.App {
+  text-align: center;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.App-header {
+  background-color: #d87b7b1a;
+  padding: 20px;
+  border-radius: 5px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 3px rgba(217, 25, 25, 0.1);
+}
+
+.App-header h1 {
+  margin: 0;
+  color: #0e1117;
+  font-weight: 600;
+}
+
+/* Tabs styling */
+.streamlit-tabs {
+  display: flex;
+  background-color: #ffffff;
+  border-radius: 5px;
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+.react-tabs__tab {
+  padding: 12px 24px;
+  cursor: pointer;
+  color: #0e1117;
+  font-weight: 500;
+  border: none;
+  background: transparent;
+  transition: background-color 0.3s;
+}
+
+.react-tabs__tab--selected {
+  background-color: #ffffff;
+  border-top: 2px solid #ff4b4b;
+  font-weight: 600;
+}
+
+.react-tabs__tab-panel {
+  display: none;
+}
+
+.react-tabs__tab-panel--selected {
+  display: block;
+}
+
+/* Container styling */
+.streamlit-container {
+  background-color: #ffffff;
+  padding: 25px;
+  border-radius: 5px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+  text-align: left;
+}
+
+.streamlit-container h2 {
+  color: #0e1117;
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-weight: 600;
+}
+
+.streamlit-container p {
+  margin-bottom: 20px;
+}
+
+/* Home tab styling */
+.info-section {
+  margin-top: 20px;
+}
+
+.info-section h3 {
+  color: #0e1117;
+  margin-top: 25px;
+  margin-bottom: 10px;
+  font-weight: 600;
+}
+
+.info-section ul {
+  padding-left: 20px;
+}
+
+.info-section li {
+  margin-bottom: 8px;
+}
+
+/* Writing tab styling */
+.upload-section {
+  margin-bottom: 30px;
+}
+
+.file-input {
+  margin-bottom: 20px;
+}
+
+.file-input label {
+  display: inline-block;
+  background-color: #f63366;
+  color: white;
+  padding: 10px 15px;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-right: 10px;
+  font-weight: 500;
+}
+
+.file-input input[type="file"] {
+  display: none;
+}
+
+.image-preview {
+  margin: 20px 0;
+  text-align: center;
+}
+
+.image-preview img {
+  max-width: 100%;
+  max-height: 400px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.streamlit-button {
+  background-color: #f63366;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.3s;
+}
+
+.streamlit-button:hover {
+  background-color: #d62f5e;
+}
+
+.streamlit-button:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+.error {
+  color: #ff4b4b;
+  margin-top: 10px;
+}
+
+/* Results styling */
+.results-container {
+  margin-top: 30px;
+}
+
+.text-results, .metrics-results {
+  margin-bottom: 25px;
+}
+
+.prediction-result {
+  margin-top: 20px;
+  padding: 15px;
+  border-radius: 4px;
+  background-color: #f0f2f6;
+}
+
+.positive-result {
+  color: #28a745;
+  font-weight: 600;
+}
+
+.negative-result {
+  color: #dc3545;
+  font-weight: 600;
+}
+
+/* Pronunciation tab styling */
+.level-selector {
+  margin-bottom: 25px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.streamlit-select {
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: 1px solid #ddd;
+  background-color: white;
+  margin-left: 10px;
+}
+
+.pronunciation-test {
+  margin-top: 20px;
+}
+
+.word-display {
+  margin-bottom: 20px;
+  padding: 15px;
+  background-color: #f9eeee;
+  border-radius: 4px;
+  text-align: center;
+}
+
+.test-word {
+  font-size: 24px;
+  font-weight: 600;
+  color: #0e1117;
+}
+
+.pronunciation-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+}
+
+.mic-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mic-button.listening {
+  background-color: #28a745;
+}
+
+.spoken-text, .pronunciation-result {
+  width: 100%;
+  padding: 15px;
+  background-color: #f0f2f6;
+  border-radius: 4px;
+  margin-bottom: 15px;
+}
+
+/* Dictation tab styling */
+.dictation-test {
+  margin-top: 20px;
+}
+
+.dictation-words {
+  margin: 20px 0;
+}
+
+.dictation-word-input {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+  gap: 10px;
+}
+
+.dictation-word-input label {
+  width: 30px;
+  text-align: right;
+  font-weight: 600;
+}
+
+.streamlit-input {
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: 1px solid #ddd;
+}
+
+.accuracy-indicator {
+  width: 50px;
+  text-align: center;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.accuracy-indicator.high {
+  background-color: #28a745;
+  color: white;
+}
+
+.accuracy-indicator.medium {
+  background-color: #ffc107;
+  color: #212529;
+}
+
+.accuracy-indicator.low {
+  background-color: #dc3545;
+  color: white;
+}
+
+.dictation-results {
+  margin-top: 20px;
+  padding: 15px;
+  background-color: #f0f2f6;
+  border-radius: 4px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .App {
+    padding: 10px;
+  }
+  
+  .streamlit-container {
+    padding: 15px;
+  }
+  
+  .level-selector {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .test-word {
+    font-size: 20px;
+  }
+}
+
+/* Add these styles to your existing App.css file */
+
+/* Logo styling in header */
+.app-logo {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-right: 15px;
+  box-shadow: 0 4px 8px rgba(248, 248, 248, 0.2);
+}
+
+/* Header flexbox for logo alignment */
+.App-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+/* Footer styling */
+.app-footer {
+  background-color: #f8f9fa00;
+  padding: 20px;
+  margin-top: 40px;
+  border-top: 1px solid #dee2e6;
+  text-align: center;
+  border-radius: 8px;
+}
+
+.footer-content {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.footer-content p {
+  margin: 8px 0;
+  color: #495057;
+  font-size: 14px;
+}
+
+.footer-content .disclaimer {
+  font-size: 12px;
+  color: #6c757d;
+  font-style: italic;
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid #dee2e6;
+}
+
+/* Error banner styling */
+.error-banner {
+  background-color: #f8d7da;
+  color: #721c24;
+  padding: 12px;
+  margin: 15px 0;
+  border-radius: 4px;
+  border: 1px solid #f5c6cb;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .App-header {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .app-logo {
+    width: 50px;
+    height: 50px;
+    margin-right: 0;
+  }
+}
