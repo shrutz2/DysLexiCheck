@@ -119,6 +119,30 @@ start_app.bat
   - Percentage of corrections needed
   - Phonetic accuracy using multiple algorithms (Soundex, Metaphone, Caverphone, NYSIIS)
 
+## 🐳 Docker
+
+This project includes simple Docker support. The backend image will build the React frontend and serve the static files via the Flask app.
+
+Build and run with docker-compose (recommended):
+
+```powershell
+# From the project root
+docker-compose build
+docker-compose up
+```
+
+Direct build (backend context builds frontend automatically):
+
+```powershell
+docker build -t dyslexic-backend ./backend
+docker run -p 5000:5000 dyslexic-backend
+```
+
+Notes:
+- The container exposes port 5000. Point your browser to http://localhost:5000
+- Secrets (Azure keys, Bing API key) are still stored in code for development. For production, set them with environment variables or Docker secrets and update the code to read from env vars.
+
+
 ### 2. Machine Learning Model
 - **Algorithm**: Decision Tree Classifier
 - **Training Data**: 100 handwriting samples (50 dyslexic, 50 non-dyslexic)
