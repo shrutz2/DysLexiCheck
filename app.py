@@ -10,6 +10,7 @@ import speech_recognition as sr
 import pyttsx3
 import time
 import eng_to_ipa as ipa
+# from database import DyslexiaDB
 
 
 from azure.cognitiveservices.vision.computervision import ComputerVisionClient
@@ -71,6 +72,9 @@ try:
 except Exception as e:
     print(f"Warning: Could not initialize LanguageTool: {e}")
     my_tool = None
+
+# Initialize database
+# db = DyslexiaDB()
 
 # '''-------------------------------------------------------------------------------------------------------------------------------------------------------------------------'''
 
@@ -338,6 +342,13 @@ and 6 (6%) are having excellent academic performance.""")
 with tab2:
     st.title("   Dyslexia Detection Using Handwriting Samples")
     st.write("This is a simple web app that works based on machine learning techniques. This application can predict the presence of dyslexia from the handwriting sample of a person.")
+    
+    # User info form
+    with st.expander("Enter Your Details (Optional)"):
+        user_name = st.text_input("Name")
+        user_age = st.number_input("Age", min_value=5, max_value=18, value=10)
+        user_grade = st.selectbox("Grade Level", ["2nd-4th", "5th-7th"])
+    
     with st.container():
         st.write("---")
         image = st.file_uploader("Upload the handwriting sample that you want to test", type=["jpg"])
@@ -352,6 +363,14 @@ with tab2:
             try:
                 feature_array = get_feature_array("temp.jpg")
                 result = score(feature_array)
+                probability = result[1] if result[0] == 0 else result[0]
+                
+                # Save to database if user provided details
+                # if user_name:
+                #     user_id = db.add_user(user_name, user_age, user_grade)
+                #     db.save_test_result(user_id, "handwriting", feature_array, probability)
+                #     st.success("Test result saved to database!")
+                
                 if result[0] == 1:
                     st.write("From the tests on this handwriting sample there is very slim chance that this person is sufferning from dyslexia or dysgraphia")
                 else:
@@ -486,14 +505,63 @@ with tab3:
             status.write("Time up! calculating inacuracy......")
         
         
-            pronounciation_inaccuracy = check_pronounciation(str_displayed, str_pronounced)/len(str_displayed)
-        
-            words.write("the pronounciation inacuuracy is: " + str(pronounciation_inaccuracy))
-            status.write("original : " + ipa.convert(str_displayed) )
-            st.write("\npronounced: " + ipa.convert(str_pronounced))
+            # Enhanced phonetic analysis
+            original_ipa = ipa.convert(str_displayed)
+            pronounced_ipa = ipa.convert(str_pronounced)
+            
+            phonetic_distance = check_pronounciation(str_displayed, str_pronounced)
+            max_length = max(len(original_ipa), len(pronounced_ipa), 1)
+            accuracy_score = ((max_length - phonetic_distance) / max_length) * 100
+            
+            # Display results
+            st.subheader("📊 Pronunciation Analysis Results")
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.metric("Accuracy Score", f"{accuracy_score:.1f}%")
+                st.metric("Phonetic Distance", phonetic_distance)
+            
+            with col2:
+                if accuracy_score >= 85:
+                    st.success("🎉 Excellent pronunciation!")
+                elif accuracy_score >= 70:
+                    st.info("👍 Good attempt!")
+                else:
+                    st.warning("⚠️ Needs improvement")
+            
+            st.subheader("🔤 Phonetic Transcription")
+            st.write(f"**Expected IPA:** {original_ipa}")
+            st.write(f"**Your IPA:** {pronounced_ipa}")
             
     with tab3:
-        st.subheader("Phonetics")
+        st.subheader("🔤 Phonetics & IPA Analysis")
+        
+        # Interactive phonetic converter
+        st.write("**Try the Phonetic Converter:**")
+        user_text = st.text_input("Enter a word or sentence to see its IPA transcription:")
+        if user_text:
+            try:
+                user_ipa = ipa.convert(user_text)
+                st.success(f"**IPA Transcription:** {user_ipa}")
+                
+                # Show phonetic encodings
+                soundex = Soundex()
+                metaphone = Metaphone()
+                caverphone = Caverphone()
+                nysiis = NYSIIS()
+                
+                st.write("**Phonetic Encodings:**")
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.write(f"- Soundex: {soundex.encode(user_text)}")
+                    st.write(f"- Metaphone: {metaphone.encode(user_text)}")
+                with col2:
+                    st.write(f"- Caverphone: {caverphone.encode(user_text)}")
+                    st.write(f"- NYSIIS: {nysiis.encode(user_text)}")
+            except Exception as e:
+                st.error(f"Error processing text: {e}")
+        
+        st.subheader("📚 About Phonetics")
         st.write("""
                  Phonetics is a branch of linguistics that studies how humans produce and perceive sounds, or in the case of sign languages, the equivalent aspects of sign. 
 Phoneticians—linguists who specialize in studying Phonetics the physical properties of speech. When you open any English dictionary, you will find some kind of signs 
@@ -666,9 +734,63 @@ with tab4:
             print(typed_words)
             print(dictated_words)
 
-            st.write("your dictation score is (lesser the better) : " , levenshtein(" ".join(typed_words) , " ".join(dictated_words)))
-            st.write("dictated words: " + " ".join(dictated_words))
-            st.write("typed words: " + " ".join(typed_words))
+            # Enhanced dictation analysis
+            total_distance = levenshtein(" ".join(typed_words), " ".join(dictated_words))
+            
+            # Individual word analysis
+            correct_words = 0
+            word_results = []
+            
+            for i, (dictated, typed) in enumerate(zip(dictated_words, typed_words)):
+                word_distance = levenshtein(dictated.lower(), typed.lower())
+                is_correct = word_distance == 0
+                if is_correct:
+                    correct_words += 1
+                word_results.append((dictated, typed, is_correct, word_distance))
+            
+            # Calculate proper accuracy
+            word_accuracy = (correct_words / len(dictated_words)) * 100
+            
+            st.subheader("📊 Dictation Results")
+            
+            # Summary metrics
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Word Accuracy", f"{word_accuracy:.1f}%")
+            with col2:
+                st.metric("Correct Words", f"{correct_words}/10")
+            with col3:
+                st.metric("Edit Distance", total_distance)
+            
+            # Performance feedback based on word accuracy
+            if word_accuracy >= 90:
+                st.success("🎉 Excellent dictation performance!")
+                dyslexia_indicator = "Very low likelihood of dyslexia"
+            elif word_accuracy >= 80:
+                st.info("👍 Good dictation skills!")
+                dyslexia_indicator = "Low likelihood of dyslexia"
+            elif word_accuracy >= 70:
+                st.warning("⚠️ Fair performance")
+                dyslexia_indicator = "Moderate concern"
+            else:
+                st.error("❌ Significant difficulties detected")
+                dyslexia_indicator = "Higher likelihood of dyslexia"
+            
+            st.info(f"🧠 **Assessment:** {dyslexia_indicator}")
+            
+            # Detailed word-by-word results
+            st.subheader("📝 Word Analysis")
+            for i, (dictated, typed, correct, distance) in enumerate(word_results):
+                col1, col2, col3 = st.columns([2, 2, 1])
+                with col1:
+                    st.write(f"**{i+1}. Expected:** {dictated}")
+                with col2:
+                    st.write(f"**Your input:** {typed}")
+                with col3:
+                    if correct:
+                        st.success("✅")
+                    else:
+                        st.error(f"❌ ({distance})")
 
 
 
@@ -701,4 +823,5 @@ with tab5:
         st.image("images/percentage_of_phonetic_accuraccy.jpg")
     except:
         st.write("Chart image not found")
+
 

@@ -1,0 +1,137 @@
+{
+  "info": {
+    "_postman_id": "dyslexicheck-collection",
+    "name": "DysLexiCheck API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Root",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:5000/",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            ""
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Words (level=1)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:5000/api/get-words?level=1",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "get-words"
+          ],
+          "query": [
+            {
+              "key": "level",
+              "value": "1"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Analyze Image (sample)",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "file",
+              "type": "file",
+              "src": "path/to/sample.jpg"
+            }
+          ]
+        },
+        "url": {
+          "raw": "http://localhost:5000/api/analyze-image",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "analyze-image"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Check Pronunciation",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"original\": \"cat\",\n  \"pronounced\": \"kat\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:5000/api/check-pronunciation",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "check-pronunciation"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Check Dictation",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"words\": [\"apple\", \"banana\"],\n  \"user_input\": [\"aple\", \"banana\"]\n}"
+        },
+        "url": {
+          "raw": "http://localhost:5000/api/check-dictation",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "check-dictation"
+          ]
+        }
+      }
+    }
+  ]
+}

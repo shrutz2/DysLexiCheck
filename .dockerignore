@@ -1,0 +1,22 @@
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+env/
+venv/
+build/
+dist/
+.pytest_cache
+
+# Git
+.git
+
+# Node
+frontend/node_modules
+frontend/build
+
+# Data and models
+data/
+model_training/
+*.sav

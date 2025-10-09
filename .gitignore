@@ -223,6 +223,13 @@ secrets.json
 *.key
 *.pem
 
+# Admin panel and database (security)
+admin_panel.py
+db_viewer.py
+*.db
+*.sqlite
+*.sqlite3
+
 # Model files (if large)
 *.pkl
 *.joblib

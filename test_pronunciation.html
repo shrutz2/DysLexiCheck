@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Pronunciation Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        button { padding: 10px 20px; margin: 10px; font-size: 16px; }
+        .listening { background-color: #ff4444; color: white; }
+        .result { margin: 20px 0; padding: 15px; background: #f0f0f0; }
+    </style>
+</head>
+<body>
+    <h1>Pronunciation Test Debug</h1>
+    
+    <div>
+        <h3>Word to pronounce: <span id="word">apple</span></h3>
+        <button id="startBtn" onclick="startListening()">🎤 Start Speaking</button>
+        <button onclick="nextWord()">Next Word</button>
+    </div>
+    
+    <div id="status"></div>
+    <div id="result"></div>
+        <div style="margin-top:12px; color:#a00;" id="rawError"></div>
+        <div style="margin-top:8px; color:#333;" id="micPermStatus"></div>
+    
+    <script>
+        const words = ['apple', 'banana', 'cat', 'dog', 'elephant'];
+        let currentIndex = 0;
+        let recognition = null;
+        let isListening = false;
+        
+        // Initialize speech recognition
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition;
+            recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            recognition.lang = 'en-US';
+            
+            recognition.onstart = () => {
+                console.log('Started listening');
+                document.getElementById('status').innerHTML = '🎤 Listening... Say: ' + words[currentIndex];
+                document.getElementById('startBtn').className = 'listening';
+                document.getElementById('startBtn').textContent = '🎤 Listening...';
+                isListening = true;
+            };
+            
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript.trim().toLowerCase();
+                console.log('Heard:', transcript);
+                document.getElementById('result').innerHTML = 
+                    '<strong>You said:</strong> ' + transcript + '<br>' +
+                    '<strong>Expected:</strong> ' + words[currentIndex] + '<br>' +
+                    '<strong>Match:</strong> ' + (transcript === words[currentIndex] ? '✅ Perfect!' : '❌ Try again');
+                stopListening();
+            };
+            
+            recognition.onerror = (event) => {
+                console.error('Speech error:', event.error);
+                    document.getElementById('status').innerHTML = '❌ Error: ' + event.error;
+                    document.getElementById('rawError').innerText = 'Raw event: ' + JSON.stringify(event);
+                stopListening();
+            };
+            
+            recognition.onend = () => {
+                console.log('Stopped listening');
+                stopListening();
+            };
+        } else {
+            document.getElementById('status').innerHTML = '❌ Speech recognition not supported. Use Chrome or Edge.';
+        }
+        
+        function startListening() {
+            if (recognition && !isListening) {
+                try {
+                    recognition.start();
+                } catch (error) {
+                    console.error('Error starting recognition:', error);
+                    document.getElementById('status').innerHTML = '❌ Error starting microphone';
+                }
+            }
+        }
+        
+        function stopListening() {
+            isListening = false;
+            document.getElementById('startBtn').className = '';
+            document.getElementById('startBtn').textContent = '🎤 Start Speaking';
+            document.getElementById('status').innerHTML = '';
+        }
+        
+        function nextWord() {
+            currentIndex = (currentIndex + 1) % words.length;
+            document.getElementById('word').textContent = words[currentIndex];
+            document.getElementById('result').innerHTML = '';
+            stopListening();
+        }
+        
+        // Test microphone permissions
+        navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(() => {
+                    console.log('Microphone access granted');
+                    micStatusEl.innerText = 'Microphone access granted. Speak clearly when listening is active.';
+                })
+                .catch(err => {
+                    console.error('Microphone access denied:', err);
+                    micStatusEl.innerText = '❌ Microphone access required. Please allow microphone access.';
+                    document.getElementById('rawError').innerText = JSON.stringify(err);
+                });
+            // Show microphone permission status and request access to provide clearer messages
+            const micStatusEl = document.getElementById('micPermStatus');
+            if (navigator.permissions && navigator.permissions.query) {
+                navigator.permissions.query({ name: 'microphone' }).then((perm) => {
+                    micStatusEl.innerText = 'Microphone permission state: ' + perm.state;
+                    perm.onchange = () => { micStatusEl.innerText = 'Microphone permission state: ' + perm.state; };
+                }).catch(() => {
+                    micStatusEl.innerText = 'Microphone permission: unknown';
+                });
+            }
+    </script>
+</body>
+</html>
