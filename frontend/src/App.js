@@ -52,8 +52,8 @@ export default function App() {
 
   return (
     <div className="App">
-      <header className="App-header">
-        <h1>DysLexiCheck - Dyslexia Detection System</h1>
+      <header className="App-header" style={{ overflow: 'hidden' }}>
+        <img src="/header.jpg" alt="DysLexiCheck" style={{ width: '100%', height: 'auto', display: 'block', imageRendering: 'crisp-edges' }} />
       </header>
       {error && <div className="error-banner">{error}</div>}
       <main>
@@ -69,8 +69,26 @@ export default function App() {
           <TabPanel>
             <div className="streamlit-container">
               <h2>Welcome to DysLexiCheck</h2>
-              <p>Dyslexia is a learning disorder that involves difficulty reading due to problems identifying speech sounds and learning how they relate to letters and words.</p>
-              <p>This application uses machine learning to detect potential dyslexia indicators through handwriting analysis.</p>
+              <p style={{ fontSize: 18, lineHeight: 1.8 }}>
+                Dyslexia is a learning disorder that involves difficulty reading due to problems identifying speech sounds and learning how they relate to letters and words. 
+                It affects approximately 10-15% of the population worldwide.
+              </p>
+              <p style={{ fontSize: 18, lineHeight: 1.8 }}>
+                This application uses advanced machine learning algorithms to detect potential dyslexia indicators through three comprehensive tests:
+              </p>
+              <ul style={{ fontSize: 16, lineHeight: 2 }}>
+                <li><strong>Handwriting Analysis:</strong> Upload a writing sample for ML-based assessment of spelling, grammar, and phonetic patterns</li>
+                <li><strong>Pronunciation Test:</strong> Voice recording with IPA (International Phonetic Alphabet) analysis to measure pronunciation accuracy</li>
+                <li><strong>Dictation Exercise:</strong> Listen to words and type them to assess spelling and auditory processing skills</li>
+              </ul>
+              <p style={{ fontSize: 18, lineHeight: 1.8, marginTop: 30 }}>
+                Early detection is crucial for effective intervention. With proper support, individuals with dyslexia can excel academically and professionally.
+              </p>
+              <div style={{ marginTop: 30, padding: 20, background: '#ffcdd636', borderRadius: 8, border: '2px solid #ff6b6bff' }}>
+                <p style={{ margin: 0, color: '#853804ff' }}>
+                  <strong>Note:</strong> This is a preliminary screening tool. For clinical diagnosis, please consult qualified healthcare professionals.
+                </p>
+              </div>
             </div>
           </TabPanel>
 
@@ -220,7 +238,7 @@ export default function App() {
 
               {pronResults.length > 0 && pronIndex >= pronWords.length && (
                 <div className="results-container">
-                  <h3>📊 Test Complete!</h3>
+                  <h3> Test Complete!</h3>
                   <div className="metric-card" style={{ marginBottom: 20 }}>
                     <h4>Overall Pronunciation Accuracy</h4>
                     <div className="metric-value">
@@ -233,10 +251,13 @@ export default function App() {
                       <div style={{ marginBottom: 8 }}><strong>Word {i + 1}:</strong> <span style={{ fontSize: 18, color: '#667eea' }}>{r.word}</span></div>
                       <div style={{ marginBottom: 8 }}><strong>You said:</strong> {r.spoken}</div>
                       <div style={{ marginBottom: 8 }}><strong>Phonetic Accuracy:</strong> <span style={{ color: (1 - r.inaccuracy) >= 0.8 ? '#0a0' : '#c00', fontWeight: 'bold', fontSize: 18 }}>{((1 - r.inaccuracy) * 100).toFixed(1)}%</span></div>
+                      <div style={{ marginBottom: 8, padding: 10, background: '#f0f8ff', borderRadius: 4, fontSize: 14 }}>
+                        <strong>Pronunciation:</strong> The word &ldquo;{r.word}&rdquo; is pronounced <strong>{r.spoken}</strong> (/{r.pronounced_ipa}/)
+                      </div>
                       {r.original_ipa && (
                         <div style={{ marginTop: 10, padding: 10, background: '#f5f5f5', borderRadius: 4 }}>
-                          <div style={{ fontSize: 13, color: '#666' }}><strong>Expected IPA:</strong> {r.original_ipa}</div>
-                          <div style={{ fontSize: 13, color: '#666' }}><strong>Your IPA:</strong> {r.pronounced_ipa}</div>
+                          <div style={{ fontSize: 13, color: '#666' }}><strong>Expected IPA:</strong> /{r.original_ipa}/</div>
+                          <div style={{ fontSize: 13, color: '#666' }}><strong>Your IPA:</strong> /{r.pronounced_ipa}/</div>
                         </div>
                       )}
                     </div>
@@ -357,16 +378,72 @@ export default function App() {
 
           <TabPanel>
             <div className="streamlit-container">
-              <h2>About</h2>
-              <p>Dyslexia, also known as reading disorder, is a disorder characterized by reading below the expected level for ones age.</p>
-              <p>Based on spelling, grammatical, contextual and phonetic errors, the app predicts whether the person has dyslexia or not.</p>
-              <h3>How it works</h3>
-              <ul>
-                <li>Upload handwriting sample</li>
-                <li>ML model analyzes 4 key features</li>
-                <li>Decision tree predicts dyslexia likelihood</li>
-                <li>Results show confidence and recommendations</li>
+              <h2>About DysLexiCheck</h2>
+              <p style={{ fontSize: 16, lineHeight: 1.8 }}>
+                DysLexiCheck is a machine learning-based screening tool that analyzes handwriting, pronunciation, and dictation to detect potential dyslexia indicators.
+              </p>
+              
+              <h3 style={{ marginTop: 30 }}>What Does It Predict?</h3>
+              <p style={{ fontSize: 16, lineHeight: 1.8 }}>
+                The application predicts whether a person has <strong>high likelihood</strong> or <strong>low likelihood</strong> of dyslexia based on their performance across three tests:
+              </p>
+              
+              <div style={{ padding: 15, background: '#f8f9fa', borderRadius: 8, marginBottom: 20 }}>
+                <h4>1. Handwriting Analysis (ML-Based)</h4>
+                <p>Analyzes 4 key features from uploaded writing samples:</p>
+                <ul style={{ lineHeight: 1.8 }}>
+                  <li><strong>Spelling Accuracy:</strong> Dyslexia indicator if ≤96.4%</li>
+                  <li><strong>Grammatical Accuracy:</strong> Dyslexia indicator if ≤99.1%</li>
+                  <li><strong>Correction Percentage:</strong> Dyslexia indicator if >10%</li>
+                  <li><strong>Phonetic Accuracy:</strong> Dyslexia indicator if <85%</li>
+                </ul>
+                <p style={{ marginTop: 10 }}>
+                  A trained Decision Tree model evaluates these features and predicts: <strong>"High likelihood of dyslexia detected"</strong> or <strong>"Low likelihood of dyslexia"</strong> with confidence score (typically 85-95%).
+                </p>
+              </div>
+
+              <div style={{ padding: 15, background: '#f8f9fa', borderRadius: 8, marginBottom: 20 }}>
+                <h4>2. Pronunciation Test</h4>
+                <p>Measures phonetic accuracy using IPA (International Phonetic Alphabet) analysis:</p>
+                <ul style={{ lineHeight: 1.8 }}>
+                  <li>Records your pronunciation of 10 words</li>
+                  <li>Converts speech to phonetic transcription</li>
+                  <li>Compares with expected pronunciation using 4 phonetic algorithms</li>
+                  <li>Calculates accuracy percentage for each word</li>
+                </ul>
+                <p style={{ marginTop: 10 }}>
+                  Overall accuracy <strong><80%</strong> suggests pronunciation difficulties common in dyslexia.
+                </p>
+              </div>
+
+              <div style={{ padding: 15, background: '#f8f9fa', borderRadius: 8, marginBottom: 20 }}>
+                <h4>3. Dictation Test</h4>
+                <p>Assesses auditory processing and spelling skills:</p>
+                <ul style={{ lineHeight: 1.8 }}>
+                  <li>Listen to 10 spoken words</li>
+                  <li>Type what you hear</li>
+                  <li>System calculates word-by-word accuracy</li>
+                </ul>
+                <p style={{ marginTop: 10 }}>
+                  Overall accuracy <strong><80%</strong> indicates potential auditory processing difficulties.
+                </p>
+              </div>
+
+              <h3 style={{ marginTop: 30 }}>Understanding Results</h3>
+              <p style={{ fontSize: 16, lineHeight: 1.8 }}>
+                Results include specific metrics, confidence scores, and recommendations:
+              </p>
+              <ul style={{ fontSize: 16, lineHeight: 1.8 }}>
+                <li><strong>High likelihood:</strong> Multiple indicators suggest dyslexia patterns → Recommendation to consult healthcare professional</li>
+                <li><strong>Low likelihood:</strong> Performance within typical range → No immediate concerns, but monitoring recommended</li>
+                <li><strong>Confidence Score:</strong> Model's certainty in prediction (higher = more confident)</li>
               </ul>
+
+              <div style={{ marginTop: 30, padding: 20, background: '#fff3cd', borderRadius: 8, border: '2px solid #ffc107' }}>
+                <p style={{ margin: 0, color: '#856404' }}>
+                  <strong>Important:</strong> This is a preliminary screening tool, NOT a clinical diagnosis. Professional evaluation by qualified specialists is required for accurate dyslexia diagnosis.
+                </p>
+              </div>
             </div>
           </TabPanel>
 

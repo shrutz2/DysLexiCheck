@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 
 function audioBufferToWav(buffer) {
@@ -47,8 +47,16 @@ function PronunciationWord({ word, index, total, onResult }) {
   const [isRecording, setIsRecording] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [processing, setProcessing] = useState(false);
+  const [wordIPA, setWordIPA] = useState('');
+  const [userIPA, setUserIPA] = useState('');
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
+
+  useEffect(() => {
+    axios.post('http://localhost:5000/api/phonetic-analysis', { text: word })
+      .then(res => setWordIPA(res.data.full_ipa))
+      .catch(() => setWordIPA(''));
+  }, [word]);
 
   const handleRecord = async () => {
     if (isRecording) {
@@ -85,6 +93,12 @@ function PronunciationWord({ word, index, total, onResult }) {
             headers: { 'Content-Type': 'multipart/form-data' }
           });
           setTranscript(res.data.text);
+          
+          // Get user's pronunciation IPA
+          const ipaRes = await axios.post('http://localhost:5000/api/phonetic-analysis', {
+            text: res.data.text
+          });
+          setUserIPA(ipaRes.data.full_ipa);
         } catch (err) {
           console.error('Speech recognition error:', err);
           alert('Could not recognize speech. Try again.');
@@ -119,6 +133,9 @@ function PronunciationWord({ word, index, total, onResult }) {
       <div style={{ fontSize: 56, fontWeight: 'bold', color: '#333', margin: '30px 0', textAlign: 'center' }}>
         {word}
       </div>
+      <div style={{ textAlign: 'center', fontSize: 16, color: '#666', marginBottom: 20, fontStyle: 'italic' }}>
+        Pronounce this word clearly into your microphone
+      </div>
       
       <div style={{ textAlign: 'center', marginBottom: 20 }}>
         <button 
@@ -152,6 +169,16 @@ function PronunciationWord({ word, index, total, onResult }) {
         <div style={{ marginBottom: 20, padding: 20, background: '#e7f3ff', borderRadius: 8 }}>
           <div style={{ fontSize: 16, color: '#666', marginBottom: 5 }}>You said:</div>
           <div style={{ fontSize: 24, fontWeight: 'bold', color: '#333' }}>{transcript}</div>
+          {wordIPA && userIPA && (
+            <div style={{ marginTop: 15, padding: 10, background: '#f0f8ff', borderRadius: 6 }}>
+              <div style={{ fontSize: 14, color: '#666', marginBottom: 8 }}>
+                <strong>Your pronunciation:</strong> {transcript} (/{userIPA}/)
+              </div>
+              <div style={{ fontSize: 14, color: '#667eea', fontWeight: 'bold' }}>
+                <strong>Expected:</strong> {word} (/{wordIPA}/)
+              </div>
+            </div>
+          )}
         </div>
       )}
 

@@ -2,15 +2,15 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #f5f5f5;
+  background: #ffeded;
 }
 
 .App-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #ffffff 0%, #ffffff 100%);
   color: white;
   padding: 20px;
   text-align: center;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(245, 147, 147, 0.148);
 }
 
 .App-header h1 {
@@ -20,7 +20,7 @@
 
 .error-banner {
   background: #fee;
-  color: #c33;
+  color: rgb(217, 85, 85);
   padding: 12px;
   text-align: center;
   border-bottom: 2px solid #f88;
@@ -49,20 +49,20 @@ main {
 }
 
 .react-tabs__tab--selected {
-  border-bottom: 3px solid #667eea;
-  color: #667eea;
+  border-bottom: 3px solid #e97171ce;
+  color: #fc9ba3;
   font-weight: 600;
 }
 
 .streamlit-container {
-  background: white;
+  background: rgba(255, 255, 255, 0.737);
   padding: 30px;
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  box-shadow: 0 2px 8px rgba(244, 219, 219, 0.08);
 }
 
 .streamlit-button {
-  background: #667eea;
+  background: #f0778a;
   color: white;
   border: none;
   padding: 10px 20px;
@@ -73,7 +73,7 @@ main {
 }
 
 .streamlit-button:hover {
-  background: #5568d3;
+  background: #f18787;
 }
 
 .streamlit-button:disabled {
@@ -97,7 +97,7 @@ main {
 }
 
 .metric-card {
-  background: white;
+  background: rgba(253, 153, 153, 0.344);
   padding: 15px;
   border-radius: 8px;
   box-shadow: 0 1px 4px rgba(0,0,0,0.1);
@@ -107,18 +107,18 @@ main {
 .metric-card h4 {
   margin: 0 0 8px;
   font-size: 14px;
-  color: #666;
+  color: #8d8787;
 }
 
 .metric-value {
   font-size: 28px;
   font-weight: bold;
-  color: #667eea;
+  color: #ec8282;
 }
 
 .app-footer {
-  background: #333;
-  color: white;
+  background: #f2717119;
+  color: rgb(50, 27, 27);
   padding: 15px;
   text-align: center;
   margin-top: auto;
