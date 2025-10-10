@@ -13,6 +13,9 @@ from azure.cognitiveservices.vision.computervision.models import OperationStatus
 from msrest.authentication import CognitiveServicesCredentials
 import time
 from abydos.phonetic import Soundex, Metaphone, Caverphone, NYSIIS
+import speech_recognition as sr
+import io
+import wave
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for React frontend
@@ -454,6 +457,45 @@ def phonetic_analysis():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
+@app.route('/api/listen', methods=['POST'])
+def listen():
+    try:
+        if 'audio' not in request.files:
+            return jsonify({'error': 'No audio file'}), 400
+        
+        audio_file = request.files['audio']
+        temp_webm = f"temp_{int(time.time())}.webm"
+        temp_wav = f"temp_{int(time.time())}.wav"
+        audio_file.save(temp_webm)
+        
+        # Convert webm to wav
+        try:
+            from pydub import AudioSegment
+            audio = AudioSegment.from_file(temp_webm)
+            audio.export(temp_wav, format='wav')
+        except:
+            # If conversion fails, try direct recognition
+            temp_wav = temp_webm
+        
+        r = sr.Recognizer()
+        with sr.AudioFile(temp_wav) as source:
+            audio_data = r.record(source)
+            text = r.recognize_google(audio_data)
+        
+        try:
+            os.remove(temp_webm)
+            if temp_wav != temp_webm:
+                os.remove(temp_wav)
+        except:
+            pass
+        
+        return jsonify({'text': text.lower()})
+    except sr.UnknownValueError:
+        return jsonify({'error': 'Could not understand'}), 400
+    except Exception as e:
+        print(f"Listen error: {e}")
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

@@ -1,66 +1,36 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import axios from 'axios';
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import 'react-tabs/style/react-tabs.css';
-import { FaMicrophone } from 'react-icons/fa';
 import './App.css';
+import PronunciationWord from './PronunciationWord';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState(0);
   const [error, setError] = useState('');
-
-  // Writing/analysis state
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState(null);
-
+  
   // Pronunciation state
-  const [level, setLevel] = useState(1);
-  const [words, setWords] = useState([]);
-  const [currentWordIndex, setCurrentWordIndex] = useState(0);
-  const [isListening, setIsListening] = useState(false);
-  const [spokenText, setSpokenText] = useState('');
-  const [pronunciationResult, setPronunciationResult] = useState(null);
-  const recognitionRef = useRef(null);
-
+  const [pronLevel, setPronLevel] = useState(1);
+  const [pronWords, setPronWords] = useState([]);
+  const [pronIndex, setPronIndex] = useState(0);
+  const [pronResults, setPronResults] = useState([]);
+  
   // Dictation state
-  const [dictationWords, setDictationWords] = useState([]);
-  const [userInput, setUserInput] = useState([]);
-  const [dictationResults, setDictationResults] = useState(null);
+  const [dictStart, setDictStart] = useState(false);
+  const [dictLevel, setDictLevel] = useState(1);
+  const [dictWords, setDictWords] = useState([]);
+  const [dictInputs, setDictInputs] = useState(Array(10).fill(''));
+  const [dictResults, setDictResults] = useState(null);
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-      const SR = window.webkitSpeechRecognition || window.SpeechRecognition;
-      recognitionRef.current = new SR();
-      recognitionRef.current.continuous = false;
-      recognitionRef.current.interimResults = false;
-      recognitionRef.current.lang = 'en-US';
-
-      recognitionRef.current.onresult = (e) => {
-        const t = e.results[0][0].transcript;
-        setSpokenText(t.toLowerCase());
-        setIsListening(false);
-      };
-
-      recognitionRef.current.onerror = (e) => {
-        setError(`Speech recognition error: ${e.error}`);
-        setIsListening(false);
-      };
-    }
-  }, []);
-
-  // File handlers for handwriting analysis
   const handleFileChange = (e) => {
     const f = e.target.files[0];
     setFile(f);
-    if (f) {
-      const url = URL.createObjectURL(f);
-      setPreview(url);
-    } else {
-      setPreview(null);
-    }
+    if (f) setPreview(URL.createObjectURL(f));
+    else setPreview(null);
   };
 
   const handleSubmit = async (e) => {
@@ -71,9 +41,7 @@ export default function App() {
     const fd = new FormData();
     fd.append('file', file);
     try {
-      const r = await axios.post('http://localhost:5000/api/analyze-image', fd, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
+      const r = await axios.post('http://localhost:5000/api/analyze-image', fd);
       setResults(r.data);
     } catch (err) {
       setError('Failed to analyze image');
@@ -82,160 +50,197 @@ export default function App() {
     }
   };
 
-  // Words loading
-  const loadWords = async (lvl) => {
-    try {
-      setError('');
-      const r = await axios.get(`http://localhost:5000/api/get-words?level=${lvl}`);
-      setWords(r.data.words || []);
-      setCurrentWordIndex(0);
-      setPronunciationResult(null);
-      setSpokenText('');
-    } catch (err) {
-      setError('Failed to load words');
-    }
-  };
-
-  const startListening = () => {
-    if (!recognitionRef.current) return setError('SpeechRecognition not available in this browser');
-    setSpokenText('');
-    setPronunciationResult(null);
-    setIsListening(true);
-    try {
-      recognitionRef.current.start();
-    } catch (e) {
-      setError('SpeechRecognition start failed');
-      setIsListening(false);
-    }
-  };
-
-  useEffect(() => {
-    if (spokenText && !isListening && words.length) {
-      (async () => {
-        try {
-          const r = await axios.post('http://localhost:5000/api/check-pronunciation', { original: words[currentWordIndex], pronounced: spokenText });
-          setPronunciationResult(r.data);
-        } catch (e) {
-          setError('Pronunciation check failed');
-        }
-      })();
-    }
-  }, [spokenText, isListening]);
-
-  const nextWord = () => setCurrentWordIndex((i) => Math.min(words.length - 1, i + 1));
-
-  // Dictation
-  const loadDictationWords = async () => {
-    try {
-      setError('');
-      const r = await axios.get(`http://localhost:5000/api/get-words?level=${level}`);
-      setDictationWords(r.data.words || []);
-      setUserInput(Array((r.data.words || []).length).fill(''));
-      setDictationResults(null);
-    } catch (e) {
-      setError('Failed to load dictation words');
-    }
-  };
-
-  const handleInputChange = (i, v) => { const c = [...userInput]; c[i] = v; setUserInput(c); };
-
-  const checkDictation = async () => {
-    try {
-      const r = await axios.post('http://localhost:5000/api/check-dictation', { words: dictationWords, user_input: userInput });
-      setDictationResults(r.data);
-    } catch (e) {
-      setError('Dictation check failed');
-    }
-  };
-
-  useEffect(() => { if (activeTab === 2 && !words.length) loadWords(level); }, [activeTab, level]);
-  useEffect(() => { if (activeTab === 3 && !dictationWords.length) loadDictationWords(); }, [activeTab, level]);
-
   return (
-    <div className="App streamlit-style">
-      <header className="App-header"><h1>DysLexiCheck</h1></header>
+    <div className="App">
+      <header className="App-header">
+        <h1>DysLexiCheck - Dyslexia Detection System</h1>
+      </header>
       {error && <div className="error-banner">{error}</div>}
       <main>
         <Tabs selectedIndex={activeTab} onSelect={(i) => setActiveTab(i)}>
-          <TabList><Tab>Home</Tab><Tab>Writing</Tab><Tab>Pronunciation</Tab><Tab>Dictation</Tab></TabList>
+          <TabList>
+            <Tab>Home</Tab>
+            <Tab>Writing</Tab>
+            <Tab>Pronunciation</Tab>
+            <Tab>Dictation</Tab>
+            <Tab>About</Tab>
+          </TabList>
 
           <TabPanel>
             <div className="streamlit-container">
-              <h2>Welcome</h2>
-              <p>Handwriting analysis, pronunciation and dictation tests.</p>
-              <div style={{ marginTop: 12 }}>
-                <p>This demo uses a combination of rule-based heuristics and an optional Decision Tree model (if present in model_training/Decision_tree_model.sav) to provide a quick assessment.</p>
-              </div>
+              <h2>Welcome to DysLexiCheck</h2>
+              <p>Dyslexia is a learning disorder that involves difficulty reading due to problems identifying speech sounds and learning how they relate to letters and words.</p>
+              <p>This application uses machine learning to detect potential dyslexia indicators through handwriting analysis.</p>
             </div>
           </TabPanel>
 
           <TabPanel>
             <div className="streamlit-container">
-              <h2>Writing — Handwriting Analysis</h2>
-              <div className="upload-section">
-                <form onSubmit={handleSubmit}>
-                  <div className="file-input">
-                    <label htmlFor="image-upload" className="streamlit-button">Choose Image File</label>
-                    <input id="image-upload" type="file" accept="image/*" onChange={handleFileChange} style={{ display: 'none' }} />
-                  </div>
+              <h2>Handwriting Analysis</h2>
+              <p>Upload a handwriting sample to analyze for dyslexia indicators.</p>
+              
+              <form onSubmit={handleSubmit}>
+                <div style={{ marginBottom: 20 }}>
+                  <label htmlFor="image-upload" className="streamlit-button">
+                    Choose Image File (JPG)
+                  </label>
+                  <input 
+                    id="image-upload" 
+                    type="file" 
+                    accept=".jpg,.jpeg" 
+                    onChange={handleFileChange} 
+                    style={{ display: 'none' }} 
+                  />
+                </div>
 
-                  {preview && (
-                    <div className="image-preview">
-                      <h3>Preview</h3>
-                      <img src={preview} alt="Preview" style={{ maxWidth: '100%', maxHeight: '300px' }} />
-                    </div>
-                  )}
-
-                  <button type="submit" disabled={!file || loading} className="streamlit-button" style={{ marginTop: 12 }}>{loading ? 'Analyzing...' : 'Analyze Handwriting'}</button>
-                </form>
-
-                {results && (
-                  <div className="results-container">
-                    <h3>Results</h3>
-                    <p><strong>Extracted Text:</strong></p>
-                    <pre style={{ background: '#f7f7f7', padding: 12 }}>{results.extracted_text}</pre>
-                    <p><strong>Spelling Accuracy:</strong> {results.spelling_accuracy?.toFixed(1)}%</p>
-                    <p><strong>Grammatical Accuracy:</strong> {results.grammatical_accuracy?.toFixed(1)}%</p>
-                    <p><strong>Corrections Needed:</strong> {results.percentage_of_corrections?.toFixed(1)}%</p>
-                    <p><strong>Phonetic Accuracy:</strong> {results.phonetic_accuracy?.toFixed(1)}%</p>
-                    <div style={{ marginTop: 8, padding: 12, borderRadius: 6, background: results.result ? '#e8f5e8' : '#fff3cd' }}>
-                      <strong>{results.result ? '✅ No strong dyslexia indicators detected' : '⚠️ Potential dyslexia indicators detected'}</strong>
-                      <p style={{ marginTop: 6 }}>This is a preliminary assessment. Consult professionals for a full evaluation.</p>
-                    </div>
+                {preview && (
+                  <div className="image-preview">
+                    <h3>Preview</h3>
+                    <img src={preview} alt="Preview" style={{ maxWidth: 300 }} />
                   </div>
                 )}
-              </div>
+
+                <button 
+                  type="submit" 
+                  disabled={!file || loading} 
+                  className="streamlit-button"
+                >
+                  {loading ? 'Analyzing...' : 'Predict'}
+                </button>
+              </form>
+
+              {results && (
+                <div className="results-container">
+                  <h3>📊 Analysis Results</h3>
+                  
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15, marginBottom: 20 }}>
+                    <div className="metric-card">
+                      <h4>Spelling Accuracy</h4>
+                      <div className="metric-value">
+                        {(results.features?.spelling_accuracy || results.spelling_accuracy)?.toFixed(1)}%
+                      </div>
+                    </div>
+                    <div className="metric-card">
+                      <h4>Grammatical Accuracy</h4>
+                      <div className="metric-value">
+                        {(results.features?.grammatical_accuracy || results.grammatical_accuracy)?.toFixed(1)}%
+                      </div>
+                    </div>
+                    <div className="metric-card">
+                      <h4>Correction Percentage</h4>
+                      <div className="metric-value">
+                        {(results.features?.percentage_of_corrections || results.percentage_of_corrections)?.toFixed(1)}%
+                      </div>
+                    </div>
+                    <div className="metric-card">
+                      <h4>Phonetic Accuracy</h4>
+                      <div className="metric-value">
+                        {(results.features?.phonetic_accuracy || results.phonetic_accuracy)?.toFixed(1)}%
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ 
+                    padding: 15, 
+                    borderRadius: 8,
+                    background: (results.prediction?.has_dyslexia || results.result) ? '#fee' : '#efe',
+                    border: `2px solid ${(results.prediction?.has_dyslexia || results.result) ? '#f88' : '#8f8'}`
+                  }}>
+                    {(results.prediction?.has_dyslexia || results.result) ? (
+                      <>
+                        <h4 style={{ color: '#c33' }}>⚠️ High likelihood of dyslexia detected</h4>
+                        <p>Confidence: {results.prediction?.confidence || '85'}%</p>
+                        <p><strong>Recommendation:</strong> Consider consulting with a healthcare professional.</p>
+                      </>
+                    ) : (
+                      <>
+                        <h4 style={{ color: '#3c3' }}>✅ Low likelihood of dyslexia</h4>
+                        <p>Confidence: {results.prediction?.confidence || '85'}%</p>
+                        <p><strong>Note:</strong> This suggests typical writing patterns.</p>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </TabPanel>
 
           <TabPanel>
             <div className="streamlit-container">
               <h2>Pronunciation Test</h2>
-              <div style={{ marginBottom: 8 }}>
-                <label style={{ marginRight: 8 }}>Level:</label>
-                <select value={level} onChange={(e) => setLevel(parseInt(e.target.value))}>
-                  <option value={1}>Intermediate</option>
-                  <option value={2}>Elementary</option>
+              <p>Type how you pronounce each word to test pronunciation accuracy.</p>
+              
+              <div style={{ marginBottom: 20 }}>
+                <label>Grade Level: </label>
+                <select value={pronLevel} onChange={(e) => setPronLevel(Number(e.target.value))} style={{ marginLeft: 10, padding: 8 }}>
+                  <option value={2}>2nd-4th Standard</option>
+                  <option value={1}>5th-7th Standard</option>
                 </select>
-                <button className="streamlit-button" onClick={() => loadWords(level)} style={{ marginLeft: 8 }}>Load Words</button>
+                <button 
+                  className="streamlit-button" 
+                  style={{ marginLeft: 10 }}
+                  onClick={async () => {
+                    try {
+                      const res = await axios.get(`http://localhost:5000/api/get-words?level=${pronLevel}`);
+                      setPronWords(res.data.words);
+                      setPronIndex(0);
+                      setPronResults([]);
+                    } catch (err) {
+                      setError('Failed to load words');
+                    }
+                  }}
+                >
+                  Start Test
+                </button>
               </div>
 
-              {words.length > 0 && (
-                <div>
-                  <h3>{words[currentWordIndex]}</h3>
-                  <button className="streamlit-button" onClick={startListening} disabled={isListening}><FaMicrophone /> {isListening ? 'Listening...' : 'Start Speaking'}</button>
-                  {spokenText && <div><strong>You said:</strong> {spokenText}</div>}
-                  {pronunciationResult && (
-                    <div style={{ marginTop: 8 }}>
-                      <p><strong>Feedback:</strong> {pronunciationResult.feedback}</p>
-                      <p><strong>Original (IPA):</strong> {pronunciationResult.original_ipa}</p>
-                      <p><strong>Your IPA:</strong> {pronunciationResult.pronounced_ipa}</p>
-                      <p><strong>Inaccuracy:</strong> {(pronunciationResult.inaccuracy * 100).toFixed(1)}%</p>
+              {pronWords.length > 0 && pronIndex < pronWords.length && (
+                <PronunciationWord 
+                  word={pronWords[pronIndex]} 
+                  index={pronIndex} 
+                  total={pronWords.length}
+                  onResult={(spoken) => {
+                    console.log('Submitting:', spoken);
+                    console.log('Current index:', pronIndex);
+                    axios.post('http://localhost:5000/api/check-pronunciation', {
+                      original: pronWords[pronIndex],
+                      pronounced: spoken
+                    }).then(res => {
+                      console.log('API Response:', res.data);
+                      setPronResults([...pronResults, { word: pronWords[pronIndex], spoken, ...res.data }]);
+                      setPronIndex(pronIndex + 1);
+                      console.log('Moving to next word, new index:', pronIndex + 1);
+                    }).catch(err => {
+                      console.error('API Error:', err);
+                      setError('Error checking pronunciation');
+                    });
+                  }}
+                />
+              )}
+
+              {pronResults.length > 0 && pronIndex >= pronWords.length && (
+                <div className="results-container">
+                  <h3>📊 Test Complete!</h3>
+                  <div className="metric-card" style={{ marginBottom: 20 }}>
+                    <h4>Overall Pronunciation Accuracy</h4>
+                    <div className="metric-value">
+                      {((pronResults.reduce((acc, r) => acc + (1 - r.inaccuracy), 0) / pronResults.length) * 100).toFixed(1)}%
                     </div>
-                  )}
-                  <div style={{ marginTop: 8 }}>
-                    <button className="streamlit-button" onClick={() => setCurrentWordIndex((i) => Math.min(words.length - 1, i + 1))}>Next</button>
                   </div>
+                  <h4>Word-by-Word Results:</h4>
+                  {pronResults.map((r, i) => (
+                    <div key={i} style={{ padding: 15, margin: '10px 0', background: 'white', borderRadius: 6, border: '1px solid #ddd' }}>
+                      <div style={{ marginBottom: 8 }}><strong>Word {i + 1}:</strong> <span style={{ fontSize: 18, color: '#667eea' }}>{r.word}</span></div>
+                      <div style={{ marginBottom: 8 }}><strong>You said:</strong> {r.spoken}</div>
+                      <div style={{ marginBottom: 8 }}><strong>Phonetic Accuracy:</strong> <span style={{ color: (1 - r.inaccuracy) >= 0.8 ? '#0a0' : '#c00', fontWeight: 'bold', fontSize: 18 }}>{((1 - r.inaccuracy) * 100).toFixed(1)}%</span></div>
+                      {r.original_ipa && (
+                        <div style={{ marginTop: 10, padding: 10, background: '#f5f5f5', borderRadius: 4 }}>
+                          <div style={{ fontSize: 13, color: '#666' }}><strong>Expected IPA:</strong> {r.original_ipa}</div>
+                          <div style={{ fontSize: 13, color: '#666' }}><strong>Your IPA:</strong> {r.pronounced_ipa}</div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
@@ -244,38 +249,134 @@ export default function App() {
           <TabPanel>
             <div className="streamlit-container">
               <h2>Dictation Test</h2>
-              <div style={{ marginBottom: 8 }}>
-                <label style={{ marginRight: 8 }}>Level:</label>
-                <select value={level} onChange={(e) => setLevel(parseInt(e.target.value))}>
-                  <option value={1}>Intermediate</option>
-                  <option value={2}>Elementary</option>
-                </select>
-                <button className="streamlit-button" onClick={loadDictationWords} style={{ marginLeft: 8 }}>Load Words</button>
+              <p>Listen to words and type what you hear.</p>
+              
+              <div style={{ marginBottom: 20 }}>
+                <label>
+                  <input type="checkbox" checked={dictStart} onChange={(e) => setDictStart(e.target.checked)} />
+                  {' '}Start Dictation
+                </label>
               </div>
 
-              {dictationWords.length > 0 && (
-                <div>
-                  {dictationWords.map((word, i) => (
-                    <div key={i} style={{ marginBottom: 8 }}>
-                      <label style={{ marginRight: 8 }}>{i + 1}.</label>
-                      <input value={userInput[i] || ''} onChange={(e) => handleInputChange(i, e.target.value)} />
-                      <button className="streamlit-button" onClick={() => { if (window.speechSynthesis) { const u = new SpeechSynthesisUtterance(word); u.rate = 0.9; window.speechSynthesis.speak(u); } }} style={{ marginLeft: 8 }}>Play</button>
-                      {dictationResults && dictationResults.accuracy && <span style={{ marginLeft: 8 }}>{(dictationResults.accuracy[i] * 100).toFixed(0)}%</span>}
-                    </div>
-                  ))}
-
-                  <div style={{ marginTop: 8 }}>
-                    <button className="streamlit-button" onClick={checkDictation}>Check Spelling</button>
-                    {dictationResults && <div style={{ marginTop: 8 }}>Overall Accuracy: {(dictationResults.overall_accuracy * 100).toFixed(1)}%</div>}
+              {dictStart && (
+                <>
+                  <div style={{ marginBottom: 20 }}>
+                    <label>Select Grade Level: </label>
+                    <select value={dictLevel} onChange={(e) => setDictLevel(Number(e.target.value))} style={{ marginLeft: 10, padding: 8 }}>
+                      <option value={1}>5th-7th Standard</option>
+                      <option value={2}>2nd-4th Standard</option>
+                    </select>
                   </div>
-                </div>
+
+                  <button 
+                    className="streamlit-button"
+                    onClick={async () => {
+                      try {
+                        const res = await axios.get(`http://localhost:5000/api/get-words?level=${dictLevel}`);
+                        setDictWords(res.data.words);
+                        setDictInputs(Array(10).fill(''));
+                        setDictResults(null);
+                        
+                        const synth = window.speechSynthesis;
+                        res.data.words.forEach((word, i) => {
+                          setTimeout(() => {
+                            const utterance = new SpeechSynthesisUtterance(word);
+                            synth.speak(utterance);
+                          }, i * 8000);
+                        });
+                      } catch (err) {
+                        setError('Failed to load words');
+                      }
+                    }}
+                  >
+                    Play Words
+                  </button>
+
+                  {dictWords.length > 0 && (
+                    <div style={{ marginTop: 30 }}>
+                      <h3>Type the words you hear:</h3>
+                      {dictWords.map((_, i) => (
+                        <div key={i} style={{ marginBottom: 10 }}>
+                          <label>Word {i + 1}: </label>
+                          <input 
+                            type="text" 
+                            value={dictInputs[i]} 
+                            onChange={(e) => {
+                              const newInputs = [...dictInputs];
+                              newInputs[i] = e.target.value;
+                              setDictInputs(newInputs);
+                            }}
+                            style={{ marginLeft: 10, padding: 8, width: 200 }}
+                          />
+                        </div>
+                      ))}
+                      
+                      <button 
+                        className="streamlit-button" 
+                        style={{ marginTop: 20 }}
+                        onClick={async () => {
+                          try {
+                            const res = await axios.post('http://localhost:5000/api/check-dictation', {
+                              words: dictWords,
+                              user_input: dictInputs
+                            });
+                            setDictResults(res.data);
+                          } catch (err) {
+                            setError('Failed to check dictation');
+                          }
+                        }}
+                      >
+                        Submit
+                      </button>
+                    </div>
+                  )}
+
+                  {dictResults && dictResults.accuracy && (
+                    <div className="results-container">
+                      <h3>📊 Dictation Results</h3>
+                      <div className="metric-card">
+                        <h4>Overall Accuracy</h4>
+                        <div className="metric-value">{(dictResults.overall_accuracy * 100).toFixed(1)}%</div>
+                      </div>
+                      <div style={{ marginTop: 20 }}>
+                        {dictWords.map((word, i) => (
+                          <div key={i} style={{ padding: 10, margin: '10px 0', background: 'white', borderRadius: 6 }}>
+                            <strong>Word:</strong> {word} | <strong>You wrote:</strong> {dictInputs[i] || ''} | <strong>Accuracy:</strong> {((dictResults.accuracy[i] || 0) * 100).toFixed(1)}%
+                          </div>
+                        ))}
+                      </div>
+                      <div style={{ marginTop: 20, padding: 15, borderRadius: 8, background: dictResults.overall_accuracy >= 0.8 ? '#efe' : '#fee' }}>
+                        <h4>{dictResults.overall_accuracy >= 0.8 ? '✅ Very low likelihood of dyslexia' : '⚠️ Consider further assessment'}</h4>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
+            </div>
+          </TabPanel>
+
+          <TabPanel>
+            <div className="streamlit-container">
+              <h2>About</h2>
+              <p>Dyslexia, also known as reading disorder, is a disorder characterized by reading below the expected level for ones age.</p>
+              <p>Based on spelling, grammatical, contextual and phonetic errors, the app predicts whether the person has dyslexia or not.</p>
+              <h3>How it works</h3>
+              <ul>
+                <li>Upload handwriting sample</li>
+                <li>ML model analyzes 4 key features</li>
+                <li>Decision tree predicts dyslexia likelihood</li>
+                <li>Results show confidence and recommendations</li>
+              </ul>
             </div>
           </TabPanel>
 
         </Tabs>
       </main>
-      <footer className="app-footer"><div className="footer-content">Dyslexia Detection Tool — preliminary assessment only.</div></footer>
+      <footer className="app-footer">
+        <div className="footer-content">
+          DysLexiCheck — Preliminary assessment tool. Consult professionals for diagnosis.
+        </div>
+      </footer>
     </div>
   );
 }
