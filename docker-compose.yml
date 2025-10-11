@@ -1,19 +1,15 @@
+version: '3.8'
+
 services:
-  dyslexicheck:
+  dyslexia-app:
     build: .
+    container_name: dyslexia-detection
     ports:
       - "5000:5000"
     volumes:
       - ./data:/app/data
-      - ./images:/app/images
       - ./model_training:/app/model_training
-      # Frontend build is provided by the image; mounting frontend can overwrite built assets.
-      # - ./frontend:/app/frontend
     environment:
+      - FLASK_ENV=production
       - PYTHONUNBUFFERED=1
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "wget --spider -q http://localhost:5000/ || exit 1"]
-      interval: 30s
-      timeout: 5s
-      retries: 3

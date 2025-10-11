@@ -25,6 +25,14 @@ export default function App() {
   const [dictWords, setDictWords] = useState([]);
   const [dictInputs, setDictInputs] = useState(Array(10).fill(''));
   const [dictResults, setDictResults] = useState(null);
+  
+  // User registration state
+  const [userId, setUserId] = useState(null);
+  const [userName, setUserName] = useState('');
+  const [userAge, setUserAge] = useState('');
+  const [userGrade, setUserGrade] = useState('');
+  const [showLogin, setShowLogin] = useState(null);
+  const [loginName, setLoginName] = useState('');
 
   const handleFileChange = (e) => {
     const f = e.target.files[0];
@@ -40,6 +48,7 @@ export default function App() {
     setError('');
     const fd = new FormData();
     fd.append('file', file);
+    if (userId) fd.append('user_id', userId);
     try {
       const r = await axios.post('http://localhost:5000/api/analyze-image', fd);
       setResults(r.data);
@@ -49,26 +58,206 @@ export default function App() {
       setLoading(false);
     }
   };
+  
+  const handleRegister = async (e) => {
+    e.preventDefault();
+    if (!userName || !userAge) return setError('Name and age required');
+    try {
+      const res = await axios.post('http://localhost:5000/api/users', {
+        name: userName,
+        age: parseInt(userAge),
+        grade: userGrade
+      });
+      setUserId(res.data.user_id);
+      setError('');
+      alert(`Registered successfully! Your ID: ${res.data.user_id}`);
+      setUserName('');
+      setUserAge('');
+      setUserGrade('');
+    } catch (err) {
+      setError('Registration failed: ' + (err.response?.data?.error || err.message));
+    }
+  };
+  
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    if (!loginName) return setError('Name required for login');
+    try {
+      const res = await axios.post('http://localhost:5000/api/login', {
+        name: loginName
+      });
+      setUserId(res.data.user_id);
+      setUserName(res.data.name);
+      setUserAge(res.data.age);
+      setUserGrade(res.data.grade || '');
+      setError('');
+      setShowLogin(false);
+      alert(`Welcome back, ${res.data.name}!`);
+    } catch (err) {
+      setError('Login failed: User not found');
+    }
+  };
 
   return (
     <div className="App">
-      <header className="App-header" style={{ overflow: 'hidden' }}>
-        <img src="/header.jpg" alt="DysLexiCheck" style={{ width: '100%', height: 'auto', display: 'block', imageRendering: 'crisp-edges' }} />
+      <header className="App-header" style={{ overflow: 'hidden', padding: '10px 0', maxHeight: '120px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+        <img src="/header.jpg" alt="DysLexiCheck" style={{ maxHeight: '100px', width: 'auto', display: 'block', objectFit: 'contain' }} />
       </header>
+      
+      {/* Registration/Login Modal */}
+      {!userId && (showLogin !== null) && (
+        <div style={{ 
+          position: 'fixed', 
+          top: 0, 
+          left: 0, 
+          right: 0, 
+          bottom: 0, 
+          background: 'rgba(0,0,0,0.5)', 
+          display: 'flex', 
+          justifyContent: 'center', 
+          alignItems: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{ 
+            background: 'white', 
+            padding: 30, 
+            borderRadius: 8, 
+            maxWidth: 400, 
+            width: '90%',
+            position: 'relative'
+          }}>
+            <button 
+              onClick={() => setShowLogin(null)}
+              style={{ 
+                position: 'absolute', 
+                top: 10, 
+                right: 10, 
+                background: 'transparent', 
+                border: 'none', 
+                fontSize: 24, 
+                cursor: 'pointer' 
+              }}
+            >
+              ×
+            </button>
+            
+            <h3>{showLogin ? 'Login' : 'Register'}</h3>
+            
+            {!showLogin ? (
+              <form onSubmit={handleRegister}>
+                <div style={{ marginBottom: 15 }}>
+                  <label>Name: </label>
+                  <input 
+                    type="text" 
+                    value={userName} 
+                    onChange={(e) => setUserName(e.target.value)}
+                    style={{ marginLeft: 10, padding: 8, width: '100%', maxWidth: 250 }}
+                    required
+                  />
+                </div>
+                <div style={{ marginBottom: 15 }}>
+                  <label>Age: </label>
+                  <input 
+                    type="number" 
+                    value={userAge} 
+                    onChange={(e) => setUserAge(e.target.value)}
+                    style={{ marginLeft: 10, padding: 8, width: 100 }}
+                    required
+                  />
+                </div>
+                <div style={{ marginBottom: 15 }}>
+                  <label>Grade: </label>
+                  <input 
+                    type="text" 
+                    value={userGrade} 
+                    onChange={(e) => setUserGrade(e.target.value)}
+                    placeholder="e.g., 5th Grade"
+                    style={{ marginLeft: 10, padding: 8, width: '100%', maxWidth: 200 }}
+                  />
+                </div>
+                <button type="submit" className="streamlit-button">Register Now</button>
+              </form>
+            ) : (
+              <form onSubmit={handleLogin}>
+                <div style={{ marginBottom: 15 }}>
+                  <label>Enter Your Name: </label>
+                  <input 
+                    type="text" 
+                    value={loginName} 
+                    onChange={(e) => setLoginName(e.target.value)}
+                    style={{ marginLeft: 10, padding: 8, width: '100%', maxWidth: 250 }}
+                    required
+                  />
+                </div>
+                <button type="submit" className="streamlit-button">Login</button>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
       {error && <div className="error-banner">{error}</div>}
       <main>
         <Tabs selectedIndex={activeTab} onSelect={(i) => setActiveTab(i)}>
-          <TabList>
-            <Tab>Home</Tab>
-            <Tab>Writing</Tab>
-            <Tab>Pronunciation</Tab>
-            <Tab>Dictation</Tab>
-            <Tab>About</Tab>
+          <TabList style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex' }}>
+              <Tab>Home</Tab>
+              <Tab>Writing</Tab>
+              <Tab>Pronunciation</Tab>
+              <Tab>Dictation</Tab>
+              <Tab>About</Tab>
+            </div>
+            
+            <div style={{ display: 'flex', gap: 10, marginRight: 20 }}>
+              {!userId ? (
+                <>
+                  <button 
+                    className="streamlit-button" 
+                    onClick={() => setShowLogin(false)}
+                    style={{ background: '#f0778a', padding: '8px 16px', fontSize: 13 }}
+                  >
+                    Register
+                  </button>
+                  <button 
+                    className="streamlit-button"
+                    onClick={() => setShowLogin(true)}
+                    style={{ background: '#f0778a', padding: '8px 16px', fontSize: 13 }}
+                  >
+                    Login
+                  </button>
+                </>
+              ) : (
+                <>
+                  <span style={{ color: '#2e7d32', fontWeight: 'bold', alignSelf: 'center' }}>Welcome, {userName}!</span>
+                  <button 
+                    className="streamlit-button" 
+                    style={{ background: '#dc3545', padding: '8px 16px', fontSize: 13 }}
+                    onClick={() => {
+                      setUserId(null);
+                      setUserName('');
+                      setUserAge('');
+                      setUserGrade('');
+                      setLoginName('');
+                    }}
+                  >
+                    Logout
+                  </button>
+                </>
+              )}
+            </div>
           </TabList>
 
           <TabPanel>
             <div className="streamlit-container">
               <h2>Welcome to DysLexiCheck</h2>
+              
+              {userId && (
+                <div style={{ marginBottom: 20, padding: 15, background: '#e8f5e9', borderRadius: 8, border: '2px solid #4caf50' }}>
+                  <p style={{ margin: 0, color: '#2e7d32' }}>
+                    <strong>Logged in as:</strong> {userName} (ID: {userId}, Age: {userAge}) - Your test results will be saved automatically!
+                  </p>
+                </div>
+              )}
+              
               <p style={{ fontSize: 18, lineHeight: 1.8 }}>
                 Dyslexia is a learning disorder that involves difficulty reading due to problems identifying speech sounds and learning how they relate to letters and words. 
                 It affects approximately 10-15% of the population worldwide.
@@ -129,7 +318,7 @@ export default function App() {
 
               {results && (
                 <div className="results-container">
-                  <h3>📊 Analysis Results</h3>
+                  <h3>Analysis Results</h3>
                   
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15, marginBottom: 20 }}>
                     <div className="metric-card">
@@ -166,13 +355,13 @@ export default function App() {
                   }}>
                     {(results.prediction?.has_dyslexia || results.result) ? (
                       <>
-                        <h4 style={{ color: '#c33' }}>⚠️ High likelihood of dyslexia detected</h4>
+                        <h4 style={{ color: 'rgba(204, 51, 51, 0.64)' }}>High likelihood of dyslexia detected</h4>
                         <p>Confidence: {results.prediction?.confidence || '85'}%</p>
                         <p><strong>Recommendation:</strong> Consider consulting with a healthcare professional.</p>
                       </>
                     ) : (
                       <>
-                        <h4 style={{ color: '#3c3' }}>✅ Low likelihood of dyslexia</h4>
+                        <h4 style={{ color: 'rgba(51, 204, 51, 0.52)' }}>Low likelihood of dyslexia</h4>
                         <p>Confidence: {results.prediction?.confidence || '85'}%</p>
                         <p><strong>Note:</strong> This suggests typical writing patterns.</p>
                       </>
@@ -236,30 +425,75 @@ export default function App() {
                 />
               )}
 
+              {pronResults.length > 0 && pronIndex < pronWords.length && (() => {
+                const lastResult = pronResults[pronResults.length - 1];
+                return (
+                  <div style={{ marginTop: 30 }}>
+                    <h4>Last Word Result:</h4>
+                    <div style={{ padding: 15, margin: '10px 0', background: 'white', borderRadius: 6, border: '1px solid #ddd' }}>
+                      <div style={{ marginBottom: 8 }}><strong>Word:</strong> <span style={{ fontSize: 18, color: '#f78f8fff' }}>{lastResult.word}</span></div>
+                      <div style={{ marginBottom: 8 }}><strong>You said:</strong> {lastResult.spoken}</div>
+                      <div style={{ marginTop: 10, padding: 10, background: '#f5f5f5', borderRadius: 4 }}>
+                        <div style={{ fontSize: 14, color: '#333', marginBottom: 5 }}><strong>Expected Phonetic:</strong> /{lastResult.original_ipa}/</div>
+                        <div style={{ fontSize: 14, color: '#333' }}><strong>Your Phonetic:</strong> /{lastResult.pronounced_ipa}/</div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {pronResults.length > 0 && pronIndex >= pronWords.length && (() => {
+                // Save pronunciation results to database
+                if (userId && pronResults.length > 0) {
+                  axios.post('http://localhost:5000/api/predict-pronunciation-dyslexia', {
+                    results: pronResults,
+                    user_id: userId
+                  }).catch(err => console.error('Failed to save pronunciation results'));
+                }
+                return null;
+              })()}
+              
               {pronResults.length > 0 && pronIndex >= pronWords.length && (
                 <div className="results-container">
-                  <h3> Test Complete!</h3>
+                  <h3>Test Complete!</h3>
                   <div className="metric-card" style={{ marginBottom: 20 }}>
                     <h4>Overall Pronunciation Accuracy</h4>
                     <div className="metric-value">
                       {((pronResults.reduce((acc, r) => acc + (1 - r.inaccuracy), 0) / pronResults.length) * 100).toFixed(1)}%
                     </div>
                   </div>
+                  
+                  <div style={{ 
+                    padding: 20, 
+                    borderRadius: 8, 
+                    marginBottom: 20,
+                    background: ((pronResults.reduce((acc, r) => acc + (1 - r.inaccuracy), 0) / pronResults.length) * 100) >= 80 ? '#efe' : '#fee',
+                    border: `2px solid ${((pronResults.reduce((acc, r) => acc + (1 - r.inaccuracy), 0) / pronResults.length) * 100) >= 80 ? 'rgba(136, 255, 136, 0.67)' : 'rgba(255, 136, 136, 0.72)'}`
+                  }}>
+                    {((pronResults.reduce((acc, r) => acc + (1 - r.inaccuracy), 0) / pronResults.length) * 100) >= 80 ? (
+                      <>
+                        <h4 style={{ color: 'rgba(51, 204, 51, 0.66)', margin: '0 0 10px 0' }}>Low likelihood of dyslexia</h4>
+                        <p style={{ margin: 0 }}>Your pronunciation accuracy is within normal range. No immediate concerns detected.</p>
+                      </>
+                    ) : (
+                      <>
+                        <h4 style={{ color: 'rgba(204, 51, 51, 0.62)', margin: '0 0 10px 0' }}>High likelihood of dyslexia detected</h4>
+                        <p style={{ margin: 0 }}><strong>Recommendation:</strong> Pronunciation difficulties detected. Consider consulting with a healthcare professional for comprehensive assessment.</p>
+                      </>
+                    )}
+                  </div>
                   <h4>Word-by-Word Results:</h4>
                   {pronResults.map((r, i) => (
                     <div key={i} style={{ padding: 15, margin: '10px 0', background: 'white', borderRadius: 6, border: '1px solid #ddd' }}>
-                      <div style={{ marginBottom: 8 }}><strong>Word {i + 1}:</strong> <span style={{ fontSize: 18, color: '#667eea' }}>{r.word}</span></div>
+                      <div style={{ marginBottom: 8 }}><strong>Word {i + 1}:</strong> <span style={{ fontSize: 18, color: '#f78f8fff' }}>{r.word}</span></div>
                       <div style={{ marginBottom: 8 }}><strong>You said:</strong> {r.spoken}</div>
-                      <div style={{ marginBottom: 8 }}><strong>Phonetic Accuracy:</strong> <span style={{ color: (1 - r.inaccuracy) >= 0.8 ? '#0a0' : '#c00', fontWeight: 'bold', fontSize: 18 }}>{((1 - r.inaccuracy) * 100).toFixed(1)}%</span></div>
-                      <div style={{ marginBottom: 8, padding: 10, background: '#f0f8ff', borderRadius: 4, fontSize: 14 }}>
-                        <strong>Pronunciation:</strong> The word &ldquo;{r.word}&rdquo; is pronounced <strong>{r.spoken}</strong> (/{r.pronounced_ipa}/)
+                      <div style={{ marginBottom: 8 }}><strong>Phonetic Accuracy:</strong> <span style={{ color: (1 - r.inaccuracy) >= 0.8 ? 'rgba(18, 212, 18, 0.53)' : 'rgba(204, 0, 0, 0.59)', fontWeight: 'bold', fontSize: 18 }}>{((1 - r.inaccuracy) * 100).toFixed(1)}%</span></div>
+                      <div style={{ marginBottom: 8 }}><strong>Feedback:</strong> {r.feedback}</div>
+                      <div style={{ marginTop: 10, padding: 10, background: '#f5f5f5', borderRadius: 4 }}>
+                        <div style={{ fontSize: 14, color: '#333', marginBottom: 5 }}><strong>Expected Phonetic:</strong> /{r.original_ipa}/</div>
+                        <div style={{ fontSize: 14, color: '#333' }}><strong>Your Phonetic:</strong> /{r.pronounced_ipa}/</div>
+                        <div style={{ fontSize: 13, color: '#666', marginTop: 5 }}>Phonetic Distance: {r.phonetic_distance}</div>
                       </div>
-                      {r.original_ipa && (
-                        <div style={{ marginTop: 10, padding: 10, background: '#f5f5f5', borderRadius: 4 }}>
-                          <div style={{ fontSize: 13, color: '#666' }}><strong>Expected IPA:</strong> /{r.original_ipa}/</div>
-                          <div style={{ fontSize: 13, color: '#666' }}><strong>Your IPA:</strong> /{r.pronounced_ipa}/</div>
-                        </div>
-                      )}
                     </div>
                   ))}
                 </div>
@@ -337,10 +571,12 @@ export default function App() {
                         style={{ marginTop: 20 }}
                         onClick={async () => {
                           try {
-                            const res = await axios.post('http://localhost:5000/api/check-dictation', {
+                            const payload = {
                               words: dictWords,
                               user_input: dictInputs
-                            });
+                            };
+                            if (userId) payload.user_id = userId;
+                            const res = await axios.post('http://localhost:5000/api/check-dictation', payload);
                             setDictResults(res.data);
                           } catch (err) {
                             setError('Failed to check dictation');
@@ -354,20 +590,43 @@ export default function App() {
 
                   {dictResults && dictResults.accuracy && (
                     <div className="results-container">
-                      <h3>📊 Dictation Results</h3>
-                      <div className="metric-card">
+                      <h3>Dictation Results</h3>
+                      <div className="metric-card" style={{ marginBottom: 20 }}>
                         <h4>Overall Accuracy</h4>
                         <div className="metric-value">{(dictResults.overall_accuracy * 100).toFixed(1)}%</div>
                       </div>
+                      
+                      {dictResults.prediction && (
+                        <div style={{ 
+                          padding: 20, 
+                          borderRadius: 8, 
+                          marginBottom: 20,
+                          background: dictResults.prediction.has_dyslexia ? '#fee' : '#efe',
+                          border: `2px solid ${dictResults.prediction.has_dyslexia ? 'rgba(255, 136, 136, 0.71)' : 'rgba(136, 255, 136, 0.66)'}`
+                        }}>
+                          {dictResults.prediction.has_dyslexia ? (
+                            <>
+                              <h4 style={{ color: 'rgba(204, 51, 51, 0.76)', margin: '0 0 10px 0' }}>High likelihood of dyslexia detected</h4>
+                              <p style={{ margin: '0 0 10px 0' }}>Confidence: {dictResults.prediction.confidence}%</p>
+                              <p style={{ margin: 0 }}><strong>Recommendation:</strong> Auditory processing difficulties detected. Consider consulting with a healthcare professional for comprehensive assessment.</p>
+                            </>
+                          ) : (
+                            <>
+                              <h4 style={{ color: 'rgba(51, 204, 51, 0.5)', margin: '0 0 10px 0' }}>Low likelihood of dyslexia</h4>
+                              <p style={{ margin: '0 0 10px 0' }}>Confidence: {dictResults.prediction.confidence}%</p>
+                              <p style={{ margin: 0 }}>Your dictation accuracy is within normal range. No immediate concerns detected.</p>
+                            </>
+                          )}
+                        </div>
+                      )}
+                      
                       <div style={{ marginTop: 20 }}>
+                        <h4>Word-by-Word Results:</h4>
                         {dictWords.map((word, i) => (
                           <div key={i} style={{ padding: 10, margin: '10px 0', background: 'white', borderRadius: 6 }}>
                             <strong>Word:</strong> {word} | <strong>You wrote:</strong> {dictInputs[i] || ''} | <strong>Accuracy:</strong> {((dictResults.accuracy[i] || 0) * 100).toFixed(1)}%
                           </div>
                         ))}
-                      </div>
-                      <div style={{ marginTop: 20, padding: 15, borderRadius: 8, background: dictResults.overall_accuracy >= 0.8 ? '#efe' : '#fee' }}>
-                        <h4>{dictResults.overall_accuracy >= 0.8 ? '✅ Very low likelihood of dyslexia' : '⚠️ Consider further assessment'}</h4>
                       </div>
                     </div>
                   )}
@@ -394,8 +653,8 @@ export default function App() {
                 <ul style={{ lineHeight: 1.8 }}>
                   <li><strong>Spelling Accuracy:</strong> Dyslexia indicator if ≤96.4%</li>
                   <li><strong>Grammatical Accuracy:</strong> Dyslexia indicator if ≤99.1%</li>
-                  <li><strong>Correction Percentage:</strong> Dyslexia indicator if >10%</li>
-                  <li><strong>Phonetic Accuracy:</strong> Dyslexia indicator if <85%</li>
+                  <li><strong>Correction Percentage:</strong> Dyslexia indicator if &gt;10%</li>
+                  <li><strong>Phonetic Accuracy:</strong> Dyslexia indicator if &lt;85%</li>
                 </ul>
                 <p style={{ marginTop: 10 }}>
                   A trained Decision Tree model evaluates these features and predicts: <strong>"High likelihood of dyslexia detected"</strong> or <strong>"Low likelihood of dyslexia"</strong> with confidence score (typically 85-95%).
@@ -403,29 +662,29 @@ export default function App() {
               </div>
 
               <div style={{ padding: 15, background: '#f8f9fa', borderRadius: 8, marginBottom: 20 }}>
-                <h4>2. Pronunciation Test</h4>
-                <p>Measures phonetic accuracy using IPA (International Phonetic Alphabet) analysis:</p>
+                <h4>2. Pronunciation Test (ML-Based)</h4>
+                <p>Measures phonetic accuracy using IPA (International Phonetic Alphabet) and ML algorithms:</p>
                 <ul style={{ lineHeight: 1.8 }}>
                   <li>Records your pronunciation of 10 words</li>
                   <li>Converts speech to phonetic transcription</li>
-                  <li>Compares with expected pronunciation using 4 phonetic algorithms</li>
-                  <li>Calculates accuracy percentage for each word</li>
+                  <li>Compares with expected pronunciation using Levenshtein distance</li>
+                  <li>ML model analyzes: overall accuracy, consistency score, error rate</li>
                 </ul>
                 <p style={{ marginTop: 10 }}>
-                  Overall accuracy <strong><80%</strong> suggests pronunciation difficulties common in dyslexia.
+                  ML prediction based on: Overall accuracy &lt;70% (90% confidence), accuracy &lt;80% + error rate &gt;40% (80% confidence), or low consistency (75% confidence).
                 </p>
               </div>
 
               <div style={{ padding: 15, background: '#f8f9fa', borderRadius: 8, marginBottom: 20 }}>
-                <h4>3. Dictation Test</h4>
-                <p>Assesses auditory processing and spelling skills:</p>
+                <h4>3. Dictation Test (ML-Based)</h4>
+                <p>Assesses auditory processing and spelling using ML algorithms:</p>
                 <ul style={{ lineHeight: 1.8 }}>
                   <li>Listen to 10 spoken words</li>
                   <li>Type what you hear</li>
-                  <li>System calculates word-by-word accuracy</li>
+                  <li>ML model analyzes: spelling error rate, edit distance, phonetic accuracy (Soundex)</li>
                 </ul>
                 <p style={{ marginTop: 10 }}>
-                  Overall accuracy <strong><80%</strong> indicates potential auditory processing difficulties.
+                  ML prediction based on: Accuracy &lt;60% (90% confidence), accuracy &lt;75% + error rate &gt;40% (85% confidence), or accuracy &lt;80% + phonetic accuracy &lt;50% (75% confidence).
                 </p>
               </div>
 
@@ -450,8 +709,9 @@ export default function App() {
         </Tabs>
       </main>
       <footer className="app-footer">
-        <div className="footer-content">
-          DysLexiCheck — Preliminary assessment tool. Consult professionals for diagnosis.
+        <div className="footer-content" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>DysLexiCheck — Preliminary assessment tool. Consult professionals for diagnosis.</span>
+          <img src="/im.png" alt="Logo" style={{ maxWidth: '100px', height: 'auto' }} />
         </div>
       </footer>
     </div>

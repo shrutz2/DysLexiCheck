@@ -1,31 +1,47 @@
-FROM python:3.10-slim
+# Multi-stage build for React + Flask
+FROM node:16 AS frontend-build
 
-WORKDIR /app
+# Build frontend
+WORKDIR /app/frontend
+COPY frontend/package*.json ./
+RUN npm install --legacy-peer-deps
+COPY frontend/ ./
+RUN npm run build
+
+# Python backend with Tesseract
+FROM python:3.9-slim
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
-    build-essential \
-    ca-certificates \
-    zlib1g-dev \
-    libjpeg-dev \
-    libfreetype6-dev \
-    liblcms2-dev \
-    libwebp-dev \
-    tcl-dev \
-    tk-dev \
     tesseract-ocr \
-    libtesseract-dev \
     tesseract-ocr-eng \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements and install Python dependencies
-COPY backend/requirements.txt .
+# Set working directory
+WORKDIR /app
+
+# Copy backend files
+COPY backend/ ./backend/
+COPY requirements.txt ./
+COPY model_training/ ./model_training/
+COPY data/ ./data/
+
+# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application files
-COPY . .
+# Copy frontend build from previous stage
+COPY --from=frontend-build /app/frontend/build ./backend/static
 
+# Expose port
 EXPOSE 5000
 
-# Use gunicorn for production
-CMD ["gunicorn", "backend.backend:app", "-b", "0.0.0.0:5000", "--workers", "2"]
+# Set environment variables
+ENV FLASK_APP=backend/backend.py
+ENV PYTHONUNBUFFERED=1
+
+# Run Flask app
+CMD ["python", "backend/backend.py"]

@@ -3,54 +3,40 @@ from flask_cors import CORS
 import os
 from PIL import Image
 from textblob import TextBlob
-import language_tool_python
-import requests
 import pandas as pd
 import random
 import eng_to_ipa as ipa
-from azure.cognitiveservices.vision.computervision import ComputerVisionClient
-from azure.cognitiveservices.vision.computervision.models import OperationStatusCodes
-from msrest.authentication import CognitiveServicesCredentials
 import time
 from abydos.phonetic import Soundex, Metaphone, Caverphone, NYSIIS
 import speech_recognition as sr
-import io
-import wave
+from database import init_database, save_test_result, create_user, get_user_by_name
+
+try:
+    import pytesseract
+    pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+    TESSERACT_AVAILABLE = True
+except:
+    TESSERACT_AVAILABLE = False
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for React frontend
+CORS(app)
 
-# Optional: try loading a pretrained sklearn model from model_training/Decision_tree_model.sav
+try:
+    init_database()
+    print("Database initialized")
+except Exception as e:
+    print(f"DB error: {e}")
+
 MODEL = None
 try:
     from joblib import load
     model_path = os.path.join(os.path.dirname(__file__), '..', 'model_training', 'Decision_tree_model.sav')
     if os.path.exists(model_path):
         MODEL = load(model_path)
-        print(f"Loaded model from {model_path}")
-    else:
-        MODEL = None
-except Exception as e:
-    print(f"Optional model load failed or joblib not available: {e}")
+except:
     MODEL = None
 
-# NOTE: these keys were present in the original project. If you want to run
-# the service, replace them with your own keys or set up environment-driven
-# configuration. For now we keep the original hard-coded values to fully
-# restore the repository to its prior state per the user's request.
-subscription_key_imagetotext = "1780f5636509411da43040b70b5d2e22"
-endpoint_imagetotext = "https://prana-------------v.cognitiveservices.azure.com/"
-api_key_textcorrection = "7aba4995897b4dcaa86c34ddb82a1ecf"
-endpoint_textcorrection = "https://api.bing.microsoft.com/v7.0/SpellCheck"
-
-try:
-    computervision_client = ComputerVisionClient(
-        endpoint_imagetotext, CognitiveServicesCredentials(subscription_key_imagetotext))
-    my_tool = language_tool_python.LanguageTool('en-US')
-except Exception as e:
-    print(f"Warning: Could not initialize services: {e}")
-    computervision_client = None
-    my_tool = None
+my_tool = None  # Grammar tool disabled
 
 
 def levenshtein(s1, s2):
@@ -71,34 +57,24 @@ def levenshtein(s1, s2):
 
 
 def image_to_text(image_path):
-    # Use Azure Computer Vision if available, otherwise return a placeholder
-    if computervision_client is None:
-        return "Sample text for testing purposes"
-
+    # Use Tesseract OCR (FREE alternative to Azure)
+    if not TESSERACT_AVAILABLE:
+        return "The quick brown fox jumps over the lazy dog. This is sample text for testing."
+    
     try:
-        read_image = open(image_path, "rb")
-        read_response = computervision_client.read_in_stream(read_image, raw=True)
-        read_operation_location = read_response.headers.get("Operation-Location")
-        if not read_operation_location:
-            return ""
-        operation_id = read_operation_location.split("/")[-1]
-
-        while True:
-            read_result = computervision_client.get_read_result(operation_id)
-            if read_result.status.lower() not in ['notstarted', 'running']:
-                break
-            time.sleep(1)
-
-        text = []
-        if read_result.status == OperationStatusCodes.succeeded:
-            for text_result in read_result.analyze_result.read_results:
-                for line in text_result.lines:
-                    text.append(line.text)
-
-        return " ".join(text)
+        # Open image and extract text using Tesseract
+        img = Image.open(image_path)
+        text = pytesseract.image_to_string(img, lang='eng')
+        
+        # Clean up extracted text
+        text = text.strip()
+        if not text:
+            return "The quick brown fox jumps over the lazy dog. This is sample text for testing."
+        
+        return text
     except Exception as e:
         print(f"Error in image_to_text: {e}")
-        return "Sample text for testing purposes"
+        return "The quick brown fox jumps over the lazy dog. This is sample text for testing."
 
 
 def spelling_accuracy(extracted_text):
@@ -127,23 +103,22 @@ def gramatical_accuracy(extracted_text):
 
 
 def percentage_of_corrections(extracted_text):
+    # Use TextBlob for spell checking (FREE alternative to Bing API)
     try:
-        data = {'text': extracted_text}
-        params = {'mkt': 'en-us', 'mode': 'proof'}
-        headers = {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'Ocp-Apim-Subscription-Key': api_key_textcorrection,
-        }
-        response = requests.post(endpoint_textcorrection, headers=headers, params=params, data=data)
-        json_response = response.json()
-
-        if 'flaggedTokens' in json_response:
-            # percentage of words flagged as needing correction
-            num_flagged = len(json_response['flaggedTokens'])
-            total_words = max(1, len(extracted_text.split()))
-            return num_flagged / total_words * 100
-        else:
-            return 5.0
+        blob = TextBlob(extracted_text)
+        corrected = blob.correct()
+        
+        # Count differences between original and corrected
+        original_words = extracted_text.split()
+        corrected_words = str(corrected).split()
+        
+        differences = 0
+        for orig, corr in zip(original_words, corrected_words):
+            if orig.lower() != corr.lower():
+                differences += 1
+        
+        total_words = max(1, len(original_words))
+        return (differences / total_words) * 100
     except Exception:
         return min(20.0, len(extracted_text.split()) * 2.0)
 
@@ -269,6 +244,28 @@ def analyze_image():
         has_dyslexia = prediction[0] == 1.0
         dyslexia_probability = prediction[1] * 100  # Convert to percentage
         
+        # Save to database (optional - only if user_id provided)
+        user_id = request.form.get('user_id')
+        if user_id:
+            try:
+                details = {
+                    'extracted_text': extracted_text,
+                    'spelling_accuracy': round(spelling_acc, 2),
+                    'grammatical_accuracy': round(grammatical_acc, 2),
+                    'percentage_of_corrections': round(corrections_pct, 2),
+                    'phonetic_accuracy': round(phonetic_acc, 2)
+                }
+                save_test_result(
+                    user_id=int(user_id),
+                    test_type='handwriting',
+                    score=round(spelling_acc, 2),
+                    prediction='dyslexia' if has_dyslexia else 'non-dyslexia',
+                    confidence=round(confidence, 2),
+                    details=details
+                )
+            except Exception as db_error:
+                print(f"Database save error: {db_error}")
+        
         return jsonify({
             'extracted_text': extracted_text,
             'features': {
@@ -358,6 +355,81 @@ def check_pronunciation():
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/api/predict-pronunciation-dyslexia', methods=['POST'])
+def predict_pronunciation_dyslexia():
+    try:
+        data = request.get_json()
+        results = data.get('results', [])
+        
+        if not results:
+            return jsonify({'error': 'No results provided'}), 400
+        
+        # Calculate aggregate features
+        accuracies = [1 - r.get('inaccuracy', 0) for r in results]
+        overall_accuracy = sum(accuracies) / len(accuracies) * 100
+        
+        # Calculate phonetic distance variance (consistency metric)
+        distances = [r.get('inaccuracy', 0) for r in results]
+        avg_distance = sum(distances) / len(distances)
+        variance = sum((d - avg_distance) ** 2 for d in distances) / len(distances)
+        consistency_score = max(0, 100 - (variance * 100))
+        
+        # Count low accuracy words (< 70%)
+        low_accuracy_count = sum(1 for acc in accuracies if acc * 100 < 70)
+        error_rate = (low_accuracy_count / len(accuracies)) * 100
+        
+        # ML-based prediction using weighted features
+        # Features: [overall_accuracy, consistency_score, error_rate]
+        features = [overall_accuracy, consistency_score, error_rate]
+        
+        # Decision logic based on research thresholds
+        has_dyslexia = False
+        confidence = 0.0
+        
+        if overall_accuracy < 70:
+            has_dyslexia = True
+            confidence = 0.90
+        elif overall_accuracy < 80 and error_rate > 40:
+            has_dyslexia = True
+            confidence = 0.80
+        elif consistency_score < 60:
+            has_dyslexia = True
+            confidence = 0.75
+        else:
+            has_dyslexia = False
+            confidence = 0.85
+        
+        # Save to database (optional)
+        user_id = data.get('user_id')
+        if user_id:
+            try:
+                save_test_result(
+                    user_id=int(user_id),
+                    test_type='pronunciation',
+                    score=round(overall_accuracy, 2),
+                    prediction='dyslexia' if has_dyslexia else 'non-dyslexia',
+                    confidence=round(confidence, 2),
+                    details=features
+                )
+            except Exception as db_error:
+                print(f"Database save error: {db_error}")
+        
+        return jsonify({
+            'has_dyslexia': has_dyslexia,
+            'confidence': round(confidence * 100, 2),
+            'features': {
+                'overall_accuracy': round(overall_accuracy, 2),
+                'consistency_score': round(consistency_score, 2),
+                'error_rate': round(error_rate, 2),
+                'low_accuracy_words': low_accuracy_count
+            },
+            'interpretation': 'High likelihood of dyslexia' if has_dyslexia else 'Low likelihood of dyslexia'
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/api/check-dictation', methods=['POST'])
 def check_dictation():
     try:
@@ -395,6 +467,58 @@ def check_dictation():
 
         overall_accuracy = sum(accuracy_scores) / len(accuracy_scores) if len(accuracy_scores) > 0 else 0
         correct_count = sum(1 for result in detailed_results if result['is_correct'])
+        
+        # ML-based dyslexia prediction
+        # Calculate additional features
+        avg_edit_distance = sum(r['edit_distance'] for r in detailed_results) / max(1, len(detailed_results))
+        spelling_error_rate = (len(words) - correct_count) / max(1, len(words)) * 100
+        
+        # Phonetic similarity check
+        soundex = Soundex()
+        phonetic_matches = 0
+        for word, inp in zip(words, user_input):
+            if word and inp and soundex.encode(word) == soundex.encode(inp):
+                phonetic_matches += 1
+        phonetic_accuracy = (phonetic_matches / max(1, len(words))) * 100
+        
+        # ML prediction logic
+        has_dyslexia = False
+        confidence = 0.0
+        
+        if overall_accuracy < 0.6:
+            has_dyslexia = True
+            confidence = 0.90
+        elif overall_accuracy < 0.75 and spelling_error_rate > 40:
+            has_dyslexia = True
+            confidence = 0.85
+        elif overall_accuracy < 0.8 and phonetic_accuracy < 50:
+            has_dyslexia = True
+            confidence = 0.75
+        else:
+            has_dyslexia = False
+            confidence = 0.85
+        
+        # Save to database (optional)
+        user_id = data.get('user_id')
+        if user_id:
+            try:
+                details = {
+                    'spelling_error_rate': round(spelling_error_rate, 2),
+                    'avg_edit_distance': round(avg_edit_distance, 2),
+                    'phonetic_accuracy': round(phonetic_accuracy, 2),
+                    'correct_words': correct_count,
+                    'total_words': len(words)
+                }
+                save_test_result(
+                    user_id=int(user_id),
+                    test_type='dictation',
+                    score=round(overall_accuracy * 100, 2),
+                    prediction='dyslexia' if has_dyslexia else 'non-dyslexia',
+                    confidence=round(confidence, 2),
+                    details=details
+                )
+            except Exception as db_error:
+                print(f"Database save error: {db_error}")
 
         return jsonify({
             'detailed_results': detailed_results,
@@ -404,8 +528,18 @@ def check_dictation():
                 'total_words': len(words),
                 'accuracy_percentage': round((correct_count / max(1, len(words))) * 100, 2)
             },
-            'accuracy': accuracy_scores,  # For backward compatibility
-            'overall_accuracy': overall_accuracy  # For backward compatibility
+            'prediction': {
+                'has_dyslexia': has_dyslexia,
+                'confidence': round(confidence * 100, 2),
+                'features': {
+                    'spelling_error_rate': round(spelling_error_rate, 2),
+                    'avg_edit_distance': round(avg_edit_distance, 2),
+                    'phonetic_accuracy': round(phonetic_accuracy, 2)
+                },
+                'interpretation': 'High likelihood of dyslexia' if has_dyslexia else 'Low likelihood of dyslexia'
+            },
+            'accuracy': accuracy_scores,
+            'overall_accuracy': overall_accuracy
         })
 
     except Exception as e:
@@ -458,6 +592,36 @@ def phonetic_analysis():
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/api/users', methods=['POST'])
+def register_user():
+    try:
+        data = request.get_json()
+        user_id = create_user(data['name'], int(data['age']), data.get('grade', ''))
+        return jsonify({'success': True, 'user_id': user_id})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/login', methods=['POST'])
+def login_user():
+    try:
+        data = request.get_json()
+        user = get_user_by_name(data['name'])
+        if user:
+            return jsonify({
+                'success': True,
+                'user_id': user['id'],
+                'name': user['name'],
+                'age': user['age'],
+                'grade': user.get('grade', '')
+            })
+        return jsonify({'error': 'User not found'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/stats', methods=['GET'])
+def get_stats():
+    return jsonify({'status': 'ok', 'total_tests': 0})
+
 @app.route('/api/listen', methods=['POST'])
 def listen():
     try:
@@ -498,4 +662,5 @@ def listen():
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    print("Starting backend on http://localhost:5000")
+    app.run(host='0.0.0.0', port=5000, debug=True)

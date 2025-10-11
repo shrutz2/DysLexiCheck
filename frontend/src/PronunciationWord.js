@@ -54,7 +54,7 @@ function PronunciationWord({ word, index, total, onResult }) {
 
   useEffect(() => {
     axios.post('http://localhost:5000/api/phonetic-analysis', { text: word })
-      .then(res => setWordIPA(res.data.full_ipa))
+      .then(res => setWordIPA(res.data.ipa))
       .catch(() => setWordIPA(''));
   }, [word]);
 
@@ -77,6 +77,7 @@ function PronunciationWord({ word, index, total, onResult }) {
       };
 
       mediaRecorder.onstop = async () => {
+        setIsRecording(false);
         setProcessing(true);
         const audioBlob = new Blob(audioChunksRef.current);
         
@@ -98,7 +99,7 @@ function PronunciationWord({ word, index, total, onResult }) {
           const ipaRes = await axios.post('http://localhost:5000/api/phonetic-analysis', {
             text: res.data.text
           });
-          setUserIPA(ipaRes.data.full_ipa);
+          setUserIPA(ipaRes.data.ipa);
         } catch (err) {
           console.error('Speech recognition error:', err);
           alert('Could not recognize speech. Try again.');
@@ -120,16 +121,18 @@ function PronunciationWord({ word, index, total, onResult }) {
   const handleSubmit = () => {
     if (transcript.trim()) {
       const result = transcript.toLowerCase().trim();
+      onResult(result);
+      // Reset state for next word
       setTranscript('');
       setIsRecording(false);
       setProcessing(false);
-      onResult(result);
+      setUserIPA('');
     }
   };
 
   return (
-    <div style={{ padding: 30, background: '#f9f9f9', borderRadius: 8, marginBottom: 20, border: '2px solid #667eea' }}>
-      <h3 style={{ color: '#667eea' }}>Word {index + 1} of {total}</h3>
+    <div style={{ padding: 30, background: '#fff5f5', borderRadius: 8, marginBottom: 20, border: '2px solid #f0778a' }}>
+      <h3 style={{ color: '#f0778a' }}>Word {index + 1} of {total}</h3>
       <div style={{ fontSize: 56, fontWeight: 'bold', color: '#333', margin: '30px 0', textAlign: 'center' }}>
         {word}
       </div>
@@ -145,37 +148,37 @@ function PronunciationWord({ word, index, total, onResult }) {
           style={{ 
             fontSize: 18, 
             padding: '15px 40px', 
-            background: isRecording ? '#dc3545' : '#667eea',
+            background: isRecording ? '#dc3545' : '#f0778a',
             marginBottom: 15
           }}
         >
-          {isRecording ? '⏹️ Stop Recording' : '🎤 Start Recording'}
+          {isRecording ? 'Stop Recording' : 'Start Recording'}
         </button>
         
-        {isRecording && (
+        {isRecording && !processing && (
           <div style={{ color: '#dc3545', fontSize: 18, fontWeight: 'bold', marginTop: 10 }}>
-            🔴 Recording... Speak now!
+            Recording... Speak now!
           </div>
         )}
         
         {processing && (
-          <div style={{ color: '#667eea', fontSize: 16, marginTop: 10 }}>
+          <div style={{ color: '#f0778a', fontSize: 16, marginTop: 10 }}>
             Processing speech...
           </div>
         )}
       </div>
 
       {transcript && (
-        <div style={{ marginBottom: 20, padding: 20, background: '#e7f3ff', borderRadius: 8 }}>
+        <div style={{ marginBottom: 20, padding: 20, background: '#ffe7eb', borderRadius: 8 }}>
           <div style={{ fontSize: 16, color: '#666', marginBottom: 5 }}>You said:</div>
           <div style={{ fontSize: 24, fontWeight: 'bold', color: '#333' }}>{transcript}</div>
           {wordIPA && userIPA && (
-            <div style={{ marginTop: 15, padding: 10, background: '#f0f8ff', borderRadius: 6 }}>
-              <div style={{ fontSize: 14, color: '#666', marginBottom: 8 }}>
-                <strong>Your pronunciation:</strong> {transcript} (/{userIPA}/)
+            <div style={{ marginTop: 15, padding: 15, background: '#f5f5f5', borderRadius: 6 }}>
+              <div style={{ fontSize: 15, color: '#333', marginBottom: 8 }}>
+                <strong>Expected Phonetic:</strong> /{wordIPA}/
               </div>
-              <div style={{ fontSize: 14, color: '#667eea', fontWeight: 'bold' }}>
-                <strong>Expected:</strong> {word} (/{wordIPA}/)
+              <div style={{ fontSize: 15, color: '#333' }}>
+                <strong>Your Phonetic:</strong> /{userIPA}/
               </div>
             </div>
           )}
@@ -189,7 +192,7 @@ function PronunciationWord({ word, index, total, onResult }) {
             onClick={handleSubmit}
             style={{ fontSize: 18, padding: '15px 40px', background: '#28a745' }}
           >
-            ✔ Submit & Next
+            Submit & Next
           </button>
         </div>
       )}
